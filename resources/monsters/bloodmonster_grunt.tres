@@ -11,5 +11,4 @@ vision_range = 320.0
 attack_range = 56.0
 attack_duration = 0.8
 animation_prefix = "bloodmonster"
-sprite_scale = 1.5
-
+sprite_scale = 2.0

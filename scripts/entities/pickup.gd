@@ -33,3 +33,4 @@ func _draw() -> void:
     draw_circle(Vector2(0.0, bob), 9.0, tint)
     draw_line(Vector2(-5.0, bob), Vector2(5.0, bob), Color.WHITE, 2.0)
     draw_line(Vector2(0.0, bob - 5.0), Vector2(0.0, bob + 5.0), Color.WHITE, 2.0)
+    draw_string(ThemeDB.fallback_font, Vector2(-32.0, -18.0 + bob), item_name.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, tint)

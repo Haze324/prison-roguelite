@@ -11,5 +11,4 @@ vision_range = 280.0
 attack_range = 48.0
 attack_duration = 0.7
 animation_prefix = "demon"
-sprite_scale = 1.5
-
+sprite_scale = 2.0

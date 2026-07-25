@@ -8,7 +8,13 @@ func _ready() -> void:
 
 func _draw() -> void:
     var rect := Rect2(-size * 0.5, size)
-    draw_rect(rect, Color(0.12, 0.32, 0.28, 0.3), true)
-    draw_rect(rect, Color(0.35, 0.9, 0.7, 0.8), false, 3.0)
-    draw_line(Vector2(-size.x * 0.5, 0.0), Vector2(size.x * 0.5, 0.0), Color(0.35, 0.9, 0.7, 0.25), 1.0)
-    draw_line(Vector2(0.0, -size.y * 0.5), Vector2(0.0, size.y * 0.5), Color(0.35, 0.9, 0.7, 0.25), 1.0)
+    var glow := Color(0.25, 0.9, 0.7, 0.18)
+    var edge := Color(0.35, 0.95, 0.75, 0.95)
+    draw_rect(rect, glow, true)
+    draw_rect(rect, edge, false, 3.0)
+    draw_rect(Rect2(-34.0, -22.0, 68.0, 54.0), Color(0.08, 0.2, 0.2, 0.9), true)
+    draw_rect(Rect2(-34.0, -22.0, 68.0, 54.0), edge, false, 2.0)
+    draw_rect(Rect2(-13.0, -8.0, 26.0, 40.0), Color(0.04, 0.08, 0.09, 1.0), true)
+    draw_circle(Vector2(7.0, 12.0), 3.0, Color(0.95, 0.78, 0.3, 1.0))
+    draw_string(ThemeDB.fallback_font, Vector2(-67.0, -52.0), "SAFEHOUSE", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 14, edge)
+    draw_string(ThemeDB.fallback_font, Vector2(-54.0, 58.0), "E: RESUPPLY", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, Color(0.75, 0.9, 0.82, 1.0))

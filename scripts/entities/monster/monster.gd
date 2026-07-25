@@ -21,6 +21,7 @@ var noise_target := Vector2.ZERO
 
 func _ready() -> void:
 	add_to_group("monsters")
+	z_index = 2
 	state_machine.state_changed.connect(_on_state_changed)
 	if data == null:
 		data = MonsterData.new()
@@ -104,10 +105,19 @@ func take_damage(amount: float) -> void:
 		return
 	current_health = maxf(current_health - amount, 0.0)
 	health_changed.emit(current_health, data.max_health)
+	queue_redraw()
 	if current_health <= 0.0:
 		state_machine.transition_to("Dead")
 	else:
 		play_animation("hurt")
+
+func _draw() -> void:
+	var bar_rect := Rect2(-32.0, -60.0, 64.0, 7.0)
+	var health_ratio: float = current_health / maxf(data.max_health, 1.0)
+	draw_rect(bar_rect, Color(0.08, 0.03, 0.04, 0.95), true)
+	draw_rect(Rect2(bar_rect.position, Vector2(bar_rect.size.x * clampf(health_ratio, 0.0, 1.0), bar_rect.size.y)), Color(0.9, 0.22, 0.28, 1.0), true)
+	draw_rect(bar_rect, Color(1.0, 0.72, 0.58, 0.9), false, 1.0)
+	draw_string(ThemeDB.fallback_font, Vector2(-38.0, -67.0), data.monster_name.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, 76.0, 10, Color(1.0, 0.78, 0.68, 1.0))
 
 func hear_noise(source_position: Vector2, amount: int) -> void:
 	if current_health <= 0.0 or not is_instance_valid(target) or amount <= 0:

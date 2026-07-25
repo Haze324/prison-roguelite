@@ -9,6 +9,5 @@ dash_speed = 800.0
 dash_duration = 0.2
 dash_cooldown = 0.8
 collision_radius = 18.0
-body_scale = 1.5
+body_scale = 2.0
 hand_offset = Vector2(18, -8)
-

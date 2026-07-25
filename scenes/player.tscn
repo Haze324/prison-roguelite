@@ -27,7 +27,7 @@ position = Vector2(18, -8)
 
 [node name="WeaponSprite" type="Sprite2D" parent="WeaponPivot"]
 position = Vector2(7, 0)
-scale = Vector2(3, 3)
+scale = Vector2(2, 2)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 
