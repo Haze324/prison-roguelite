@@ -20,10 +20,11 @@ static func build_from_sheet(path: String, frame_count: int, fps: float, loop: b
 static func build_player_frames(base_path: String) -> SpriteFrames:
 	var frames: SpriteFrames = SpriteFrames.new()
 	frames.remove_animation("default")
-	_add_animation(frames, "idle", base_path + "idle.png", 6, 10.0, true)
-	_add_animation(frames, "walk", base_path + "walk.png", 6, 12.0, true)
-	_add_animation(frames, "dash", base_path + "dash.png", 6, 15.0, false)
-	_add_animation(frames, "death", base_path + "death.png", 6, 8.0, false)
+	# 角色素材为 384x64，每张横向排列 8 帧，每帧 48x64。
+	_add_animation(frames, "idle", base_path + "idle.png", 8, 10.0, true)
+	_add_animation(frames, "walk", base_path + "walk.png", 8, 12.0, true)
+	_add_animation(frames, "dash", base_path + "dash.png", 8, 15.0, false)
+	_add_animation(frames, "death", base_path + "death.png", 8, 8.0, false)
 	return frames
 
 static func build_monster_frames(base_path: String, animation_prefix: String) -> SpriteFrames:
@@ -40,6 +41,9 @@ static func _add_animation(frames: SpriteFrames, animation_name: String, path: S
 	var image: Image = Image.load_from_file(path)
 	if image == null or image.is_empty():
 		push_error("无法加载动画素材: " + path)
+		return
+	if image.get_width() % frame_count != 0:
+		push_error("动画素材宽度无法按帧数整除: %s, frame_count=%d" % [path, frame_count])
 		return
 	var frame_width: int = image.get_width() / frame_count
 	frames.add_animation(animation_name)
