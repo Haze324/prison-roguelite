@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="MonsterData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/monster_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+monster_name = "Blood Monster"
+max_health = 45.0
+move_speed = 55.0
+vision_range = 320.0
+attack_range = 56.0
+attack_duration = 0.8
+animation_prefix = "bloodmonster"
+sprite_scale = 1.5
+

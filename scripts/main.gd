@@ -1,16 +1,21 @@
 extends Node2D
 
 @onready var player: Player = $Player
+@onready var demon: Monster = $DemonGrunt
+@onready var blood_monster: Monster = $BloodMonsterGrunt
 @onready var status_label: Label = $HUD/Status
 @onready var event_label: Label = $HUD/Event
 
 var _last_event := "等待输入"
 
 func _ready() -> void:
+	demon.set_target(player)
+	blood_monster.set_target(player)
 	EventBus.weapon_switched.connect(_on_weapon_switched)
 	EventBus.shot_fired.connect(_on_shot_fired)
 	EventBus.dash_started.connect(_on_dash_started)
 	EventBus.player_state_changed.connect(_on_state_changed)
+	EventBus.monster_alerted.connect(_on_monster_alerted)
 
 func _process(_delta: float) -> void:
 	if player == null or status_label == null:
@@ -37,3 +42,5 @@ func _on_dash_started(_position: Vector2, direction: Vector2) -> void:
 func _on_state_changed(_previous_state: String, next_state: String) -> void:
 	_last_event = "状态切换：" + next_state
 
+func _on_monster_alerted(monster: Node2D, _source: Vector2) -> void:
+	_last_event = "怪物警觉：" + monster.name

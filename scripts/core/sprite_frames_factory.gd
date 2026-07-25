@@ -26,6 +26,16 @@ static func build_player_frames(base_path: String) -> SpriteFrames:
 	_add_animation(frames, "death", base_path + "death.png", 6, 8.0, false)
 	return frames
 
+static func build_monster_frames(base_path: String, animation_prefix: String) -> SpriteFrames:
+	var frames: SpriteFrames = SpriteFrames.new()
+	frames.remove_animation("default")
+	_add_animation(frames, "idle", base_path + animation_prefix + "_idle.png", 6, 5.0, true)
+	_add_animation(frames, "walk", base_path + animation_prefix + "_walk.png", 8, 8.0, true)
+	_add_animation(frames, "attack", base_path + animation_prefix + "_attack01.png", 7, 10.0, false)
+	_add_animation(frames, "hurt", base_path + animation_prefix + "_hurt.png", 4, 8.0, false)
+	_add_animation(frames, "death", base_path + animation_prefix + "_death.png", 4, 6.0, false)
+	return frames
+
 static func _add_animation(frames: SpriteFrames, animation_name: String, path: String, frame_count: int, fps: float, loop: bool) -> void:
 	var image: Image = Image.load_from_file(path)
 	if image == null or image.is_empty():

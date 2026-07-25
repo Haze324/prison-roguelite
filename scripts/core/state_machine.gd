@@ -3,6 +3,7 @@ extends Node
 
 ## 通用节点状态机。状态以子节点存在，便于在 Godot 场景树中检查和替换。
 @export var initial_state: NodePath
+signal state_changed(previous_state: String, next_state: String)
 
 var current_state: GameState
 var _states: Dictionary = {}
@@ -34,9 +35,7 @@ func transition_to(state_name: String, data: Dictionary = {}) -> void:
 		current_state.exit()
 	current_state = _states[state_name]
 	current_state.enter(data)
-	var owner_node: Node = get_parent()
-	if owner_node.has_signal("state_changed"):
-		owner_node.state_changed.emit(previous_name, state_name)
+	state_changed.emit(previous_name, state_name)
 	EventBus.player_state_changed.emit(previous_name, state_name)
 
 func physics_update(delta: float) -> void:

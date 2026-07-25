@@ -1,7 +1,10 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/player.tscn" id="2_player"]
+[ext_resource type="PackedScene" path="res://scenes/monster.tscn" id="3_monster"]
+[ext_resource type="Resource" path="res://resources/monsters/demon_grunt.tres" id="4_demon"]
+[ext_resource type="Resource" path="res://resources/monsters/bloodmonster_grunt.tres" id="5_blood"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
 size = Vector2(2400, 40)
@@ -67,6 +70,14 @@ shape = SubResource("RectangleShape2D_wall_v")
 [node name="Player" parent="." instance=ExtResource("2_player")]
 position = Vector2(400, 350)
 
+[node name="DemonGrunt" parent="." instance=ExtResource("3_monster")]
+position = Vector2(700, 350)
+data = ExtResource("4_demon")
+
+[node name="BloodMonsterGrunt" parent="." instance=ExtResource("3_monster")]
+position = Vector2(960, 520)
+data = ExtResource("5_blood")
+
 [node name="Camera2D" type="Camera2D" parent="Player"]
 position = Vector2(0, 0)
 position_smoothing_enabled = true
@@ -96,4 +107,3 @@ offset_right = 900.0
 offset_bottom = 710.0
 theme_override_colors/font_color = Color(0.8, 0.65, 0.45, 1)
 text = "最近事件：等待输入"
-
