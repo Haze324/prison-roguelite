@@ -12,6 +12,7 @@ func setup(index: int, target: Player) -> void:
     queue_redraw()
 
 func _process(_delta: float) -> void:
+    queue_redraw()
     if not fixed and player != null and global_position.distance_to(player.global_position) <= 42.0 and Input.is_action_just_pressed("interact"):
         fixed = true
         EventBus.power_node_fixed.emit(self, 0, 0)
@@ -19,8 +20,11 @@ func _process(_delta: float) -> void:
 
 func _draw() -> void:
     var edge := Color(0.95, 0.72, 0.3, 1.0) if not fixed else Color(0.35, 0.95, 0.72, 1.0)
+    draw_circle(Vector2(0.0, 18.0), 24.0, Color(0.01, 0.02, 0.025, 0.7))
     draw_rect(Rect2(-16.0, -22.0, 32.0, 44.0), Color(0.06, 0.08, 0.1, 0.95), true)
     draw_rect(Rect2(-16.0, -22.0, 32.0, 44.0), edge, false, 2.0)
     draw_circle(Vector2(0.0, -8.0), 6.0, edge)
-    draw_string(ThemeDB.fallback_font, Vector2(-28.0, -32.0), "POWER %d" % (node_index + 1), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, edge)
-    draw_string(ThemeDB.fallback_font, Vector2(-26.0, 58.0), "FIXED" if fixed else "E: FIX", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, edge)
+    var nearby: bool = player != null and global_position.distance_to(player.global_position) <= 120.0
+    if nearby:
+        draw_string(ThemeDB.fallback_font, Vector2(-28.0, -32.0), "POWER %d" % (node_index + 1), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, edge)
+        draw_string(ThemeDB.fallback_font, Vector2(-26.0, 58.0), "FIXED" if fixed else "E: FIX", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, edge)

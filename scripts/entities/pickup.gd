@@ -5,11 +5,13 @@ var item_name: String = "Ammo"
 var amount: int = 1
 var tint: Color = Color(0.35, 0.75, 0.85, 1.0)
 var pulse_time: float = 0.0
+var player: Player
 
-func setup(pickup_name: String, pickup_amount: int, pickup_tint: Color) -> void:
+func setup(pickup_name: String, pickup_amount: int, pickup_tint: Color, target_player: Player = null) -> void:
     item_name = pickup_name
     amount = pickup_amount
     tint = pickup_tint
+    player = target_player
     add_to_group("pickups")
     queue_redraw()
 
@@ -37,4 +39,6 @@ func _draw() -> void:
     draw_circle(Vector2(0.0, bob), 9.0, tint)
     draw_line(Vector2(-5.0, bob), Vector2(5.0, bob), Color.WHITE, 2.0)
     draw_line(Vector2(0.0, bob - 5.0), Vector2(0.0, bob + 5.0), Color.WHITE, 2.0)
-    draw_string(ThemeDB.fallback_font, Vector2(-32.0, -18.0 + bob), item_name.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, tint)
+    var nearby: bool = player == null or global_position.distance_to(player.global_position) <= 120.0
+    if nearby:
+        draw_string(ThemeDB.fallback_font, Vector2(-32.0, -18.0 + bob), item_name.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, tint)

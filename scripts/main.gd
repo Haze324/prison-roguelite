@@ -11,6 +11,7 @@ const BOSS_DATA: MonsterData = preload("res://resources/monsters/boss_grunt.tres
 @onready var noise_manager: NoiseManager = $NoiseManager
 @onready var demo_hud: DemoHUD = $HUD/DemoHUD
 @onready var map_generator: MapGenerator = $MapGenerator
+@onready var safehouse: SafehouseMarker = $Safehouse
 @onready var merchant: Merchant = $Merchant
 @onready var skill_terminal: SkillTerminal = $SkillTerminal
 
@@ -33,6 +34,7 @@ func _ready() -> void:
 	blood_monster.set_target(player)
 	merchant.setup(player)
 	skill_terminal.setup(player)
+	safehouse.setup(player)
 	EventBus.weapon_switched.connect(_on_weapon_switched)
 	EventBus.shot_fired.connect(_on_shot_fired)
 	EventBus.noise_emitted.connect(_on_noise_emitted)
@@ -264,7 +266,7 @@ func _spawn_pickup(position: Vector2, item_name: String, amount: int, tint: Colo
 	var pickup: Pickup = Pickup.new()
 	add_child(pickup)
 	pickup.position = position
-	pickup.setup(item_name, amount, tint)
+	pickup.setup(item_name, amount, tint, player)
 
 func _collect_nearby_pickups() -> void:
 	for node in get_tree().get_nodes_in_group("pickups"):
