@@ -5,6 +5,7 @@ extends StaticBody2D
 var size: Vector2 = Vector2(120.0, 32.0)
 var wall_variant: int = 0
 var _collision_shape: CollisionShape2D
+var _light_occluder: LightOccluder2D
 
 func setup(rect: Rect2, variant: int = 0) -> void:
     position = rect.position + rect.size * 0.5
@@ -14,11 +15,13 @@ func setup(rect: Rect2, variant: int = 0) -> void:
     collision_mask = 1
     z_index = 1
     _build_collision()
+    _build_light_occluder()
     queue_redraw()
 
 func _ready() -> void:
     add_to_group("实体墙")
     _build_collision()
+    _build_light_occluder()
     queue_redraw()
 
 func _build_collision() -> void:
@@ -29,6 +32,20 @@ func _build_collision() -> void:
     var rectangle: RectangleShape2D = RectangleShape2D.new()
     rectangle.size = size
     _collision_shape.shape = rectangle
+
+func _build_light_occluder() -> void:
+    if _light_occluder == null:
+        _light_occluder = LightOccluder2D.new()
+        _light_occluder.name = "墙体遮光"
+        add_child(_light_occluder)
+    var polygon: OccluderPolygon2D = OccluderPolygon2D.new()
+    polygon.polygon = PackedVector2Array([
+        Vector2(-size.x * 0.5, -size.y * 0.5),
+        Vector2(size.x * 0.5, -size.y * 0.5),
+        Vector2(size.x * 0.5, size.y * 0.5),
+        Vector2(-size.x * 0.5, size.y * 0.5),
+    ])
+    _light_occluder.occluder = polygon
 
 func _draw() -> void:
     var rect: Rect2 = Rect2(-size * 0.5, size)

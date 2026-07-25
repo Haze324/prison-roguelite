@@ -28,10 +28,17 @@ var current_ammo: int = 0
 var ammo_reserves: Dictionary = {}
 var magazine_ammo: Dictionary = {}
 var _reload_remaining: float = 0.0
+var _reload_duration: float = 0.0
 var _parry_remaining: float = 0.0
+var _parry_direction: Vector2 = Vector2.RIGHT
 var _parry_cooldown_remaining: float = 0.0
 var _damage_invulnerability: float = 0.0
 var _movement_noise_timer: float = 0.0
+var _action_visual_remaining: float = 0.0
+var _action_visual_type: String = ""
+var _muzzle_flash_remaining: float = 0.0
+var _facing_left: bool = false
+var _last_move_direction: Vector2 = Vector2.RIGHT
 var is_aiming: bool = false
 
 @onready var body_sprite: AnimatedSprite2D = $BodySprite
@@ -40,6 +47,8 @@ var is_aiming: bool = false
 @onready var weapon_sprite: Sprite2D = $WeaponPivot/WeaponSprite
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 @onready var state_machine: StateMachine = $StateMachine
+var flashlight_cone: FlashlightCone
+var flashlight_light: PointLight2D
 
 var current_weapon_index := 0
 var _dash_direction := Vector2.RIGHT
@@ -66,6 +75,12 @@ func _ready() -> void:
 	shadow.texture = load("res://assets/runtime/character/shadow.png")
 	if body_sprite.sprite_frames == null:
 		body_sprite.sprite_frames = SpriteFramesFactory.build_player_frames("res://assets/runtime/character/")
+	SpriteFramesFactory.ensure_player_action_animations(body_sprite.sprite_frames, "res://assets/runtime/character/")
+	flashlight_cone = FlashlightCone.new()
+	flashlight_cone.name = "手电筒光束"
+	flashlight_cone.z_index = -1
+	add_child(flashlight_cone)
+	_setup_flashlight_light()
 	play_body_animation("idle")
 	if weapons.is_empty():
 		push_warning("Player 没有配置武器资源")
@@ -88,8 +103,15 @@ func _physics_process(delta: float) -> void:
 	_parry_cooldown_remaining = maxf(_parry_cooldown_remaining - delta, 0.0)
 	_damage_invulnerability = maxf(_damage_invulnerability - delta, 0.0)
 	_movement_noise_timer = maxf(_movement_noise_timer - delta, 0.0)
+	var action_was_active: bool = _action_visual_remaining > 0.0
+	_action_visual_remaining = maxf(_action_visual_remaining - delta, 0.0)
+	_muzzle_flash_remaining = maxf(_muzzle_flash_remaining - delta, 0.0)
+	if action_was_active and _action_visual_remaining <= 0.0 and _action_visual_type != "" and not is_reloading:
+		_action_visual_type = ""
+		play_body_animation("walk" if get_move_direction() != Vector2.ZERO else "idle")
 	if is_reloading:
 		_reload_remaining = maxf(_reload_remaining - delta, 0.0)
+		queue_redraw()
 		if _reload_remaining <= 0.0:
 			_finish_reload()
 	if Input.is_action_just_pressed("reload"):
@@ -118,11 +140,16 @@ func _physics_process(delta: float) -> void:
 	if Input.is_action_pressed("shoot"):
 		shoot()
 	_check_weapon_input()
+	queue_redraw()
 
 func get_move_direction() -> Vector2:
 	return Input.get_vector("move_left", "move_right", "move_up", "move_down").normalized()
 
 func apply_normal_movement(direction: Vector2, _delta: float) -> void:
+	if direction.x != 0.0:
+		_last_move_direction = direction
+		_facing_left = direction.x < 0.0
+		body_sprite.flip_h = _facing_left
 	var running: bool = Input.is_action_pressed("run") and direction != Vector2.ZERO
 	var movement_speed: float = config.run_speed if running else config.move_speed
 	velocity = direction * movement_speed
@@ -143,9 +170,13 @@ func consume_dash_request() -> bool:
 func begin_dash() -> void:
 	_dash_direction = get_move_direction()
 	if _dash_direction == Vector2.ZERO:
-		_dash_direction = (get_global_mouse_position() - global_position).normalized()
+		_dash_direction = _last_move_direction
 	if _dash_direction == Vector2.ZERO:
 		_dash_direction = Vector2.RIGHT
+	if _dash_direction.x != 0.0:
+		_last_move_direction = _dash_direction
+		_facing_left = _dash_direction.x < 0.0
+		body_sprite.flip_h = _facing_left
 	_dash_remaining = config.dash_duration
 	_dash_cooldown_remaining = config.dash_cooldown
 	EventBus.dash_started.emit(global_position, _dash_direction)
@@ -157,23 +188,30 @@ func apply_dash_movement(delta: float) -> bool:
 	return _dash_remaining <= 0.0
 
 func play_body_animation(animation_name: String) -> void:
+	if _action_visual_remaining > 0.0 and _action_visual_type != "" and (animation_name == "idle" or animation_name == "walk"):
+		return
 	if body_sprite.sprite_frames.has_animation(animation_name) and body_sprite.animation != animation_name:
 		body_sprite.play(animation_name)
 
 func update_combat_facing() -> void:
-	var direction := get_global_mouse_position() - global_position
-	if direction.x == 0.0:
-		direction.x = 1.0 if not body_sprite.flip_h else -1.0
-	body_sprite.flip_h = direction.x < 0.0
+	if _last_move_direction.x != 0.0:
+		body_sprite.flip_h = _facing_left
 
 func update_aim() -> void:
-	var aim := get_global_mouse_position() - global_position
+	var aim: Vector2 = get_global_mouse_position() - global_position
 	if aim == Vector2.ZERO:
 		return
 	weapon_pivot.position = Vector2(config.hand_offset.x * (1.0 if aim.x >= 0.0 else -1.0), config.hand_offset.y)
 	weapon_pivot.rotation = aim.angle()
 	weapon_sprite.flip_v = aim.x < 0.0
-	body_sprite.flip_h = aim.x < 0.0
+	if flashlight_cone != null:
+		flashlight_cone.position = weapon_pivot.position
+		flashlight_cone.set_direction(aim)
+		flashlight_cone.set_enabled(flashlight_on)
+	if flashlight_light != null:
+		flashlight_light.position = weapon_pivot.position
+		flashlight_light.rotation = aim.angle()
+		flashlight_light.enabled = flashlight_on
 
 func shoot() -> void:
 	if weapons.is_empty() or _shoot_cooldown_remaining > 0.0 or is_reloading:
@@ -187,6 +225,8 @@ func shoot() -> void:
 		magazine_ammo[_weapon_key(weapon)] = current_ammo
 		ammo_changed.emit(current_ammo, weapon.mag_size)
 	_shoot_cooldown_remaining = weapon.fire_rate
+	_muzzle_flash_remaining = 0.08
+	queue_redraw()
 	var direction := (get_global_mouse_position() - weapon_pivot.global_position).normalized()
 	EventBus.shot_fired.emit(weapon, weapon_pivot.global_position, direction)
 
@@ -221,11 +261,14 @@ func reload_weapon() -> void:
 	if weapon.mag_size <= 0 or current_ammo >= weapon.mag_size or reserve <= 0:
 		return
 	is_reloading = true
-	_reload_remaining = weapon.reload_time * (0.75 if has_skill("Quick Hands") else 1.0)
+	_reload_duration = weapon.reload_time * (0.75 if has_skill("Quick Hands") else 1.0)
+	_reload_remaining = _reload_duration
+	_start_action_visual("reload", _reload_duration)
 	EventBus.noise_emitted.emit(10, global_position, self)
 
 func _finish_reload() -> void:
 	is_reloading = false
+	_reload_duration = 0.0
 	if weapons.is_empty():
 		return
 	var weapon: WeaponData = weapons[current_weapon_index]
@@ -236,12 +279,18 @@ func _finish_reload() -> void:
 	current_ammo += loaded
 	ammo_reserves[key] = reserve - loaded
 	magazine_ammo[key] = current_ammo
+	_action_visual_type = ""
+	play_body_animation("walk" if get_move_direction() != Vector2.ZERO else "idle")
 	ammo_changed.emit(current_ammo, weapon.mag_size)
 
 func start_parry() -> void:
 	if weapons.is_empty() or not weapons[current_weapon_index].is_melee or _parry_cooldown_remaining > 0.0 or is_reloading:
 		return
 	_parry_remaining = 0.2
+	_parry_direction = (get_global_mouse_position() - global_position).normalized()
+	if _parry_direction == Vector2.ZERO:
+		_parry_direction = Vector2.LEFT if _facing_left else Vector2.RIGHT
+	_start_action_visual("parry", 0.2)
 	_parry_cooldown_remaining = 0.5
 	EventBus.player_state_changed.emit("Combat", "Parry")
 
@@ -253,6 +302,7 @@ func resolve_parry(attacker: Node2D) -> bool:
 		return false
 	_parry_remaining = 0.0
 	_damage_invulnerability = 0.2
+	_start_action_visual("perfect_parry", 0.35)
 	EventBus.player_parried.emit(attacker)
 	return true
 
@@ -268,6 +318,7 @@ func take_damage(amount: float, attacker: Node2D = null) -> void:
 	else:
 		final_damage *= 1.0 - armor_reduction
 	current_health = maxf(current_health - final_damage, 0.0)
+	_start_action_visual("hurt", 0.2)
 	EventBus.damage_feedback.emit(self, final_damage, global_position, true)
 	if armor != null:
 		EventBus.armor_changed.emit(armor.armor_name, armor.durability, armor.max_durability)
@@ -286,6 +337,7 @@ func use_medkit() -> bool:
 	medkits -= 1
 	var heal_amount: float = 50.0 if has_skill("Field Medic") else 35.0
 	current_health = minf(current_health + heal_amount, max_health)
+	_start_action_visual("heal", 0.8)
 	health_changed.emit(current_health, max_health)
 	EventBus.player_health_changed.emit(current_health, max_health)
 	EventBus.consumable_used.emit("使用医疗包")
@@ -303,6 +355,7 @@ func restore_at_safehouse() -> void:
 	ammo_changed.emit(current_ammo, weapons[current_weapon_index].mag_size if not weapons.is_empty() else 0)
 	EventBus.player_health_changed.emit(current_health, max_health)
 	EventBus.consumable_used.emit("安全屋补给完成")
+	_start_action_visual("resupply", 0.8)
 
 func register_weapon(weapon: WeaponData) -> void:
 	if weapon == null:
@@ -343,6 +396,7 @@ func use_throwable(throwable_type: int, inventory_key: String) -> bool:
 	if direction == Vector2.ZERO:
 		direction = Vector2.RIGHT
 	EventBus.throwable_thrown.emit(throwable_type, global_position + direction * 72.0, direction, self)
+	_start_action_visual("throw", 0.45)
 	EventBus.consumable_changed.emit(inventory_key, count - 1, 1)
 	return true
 
@@ -384,14 +438,55 @@ func is_protected_by_safehouse() -> bool:
 			return true
 	return false
 
+func _start_action_visual(visual_type: String, duration: float) -> void:
+	_action_visual_type = visual_type
+	_action_visual_remaining = duration
+	if body_sprite.sprite_frames != null and body_sprite.sprite_frames.has_animation(visual_type):
+		body_sprite.play(visual_type)
+	queue_redraw()
+
+func _setup_flashlight_light() -> void:
+	flashlight_light = PointLight2D.new()
+	flashlight_light.name = "手电筒真实光"
+	flashlight_light.energy = 0.9
+	flashlight_light.color = Color(1.0, 0.88, 0.58, 1.0)
+	flashlight_light.shadow_enabled = true
+	var gradient: Gradient = Gradient.new()
+	gradient.colors = PackedColorArray([Color.WHITE, Color(1.0, 0.9, 0.6, 0.0)])
+	var texture: GradientTexture2D = GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.width = 256
+	texture.height = 256
+	texture.fill = GradientTexture2D.FILL_RADIAL
+	texture.fill_from = Vector2(0.5, 0.5)
+	texture.fill_to = Vector2(1.0, 0.5)
+	flashlight_light.texture = texture
+	flashlight_light.texture_scale = 1.4
+	add_child(flashlight_light)
+
 func _draw() -> void:
-	if not flashlight_on or weapon_pivot == null:
-		return
-	var direction: Vector2 = Vector2.RIGHT.rotated(weapon_pivot.rotation)
-	var points := PackedVector2Array([
-		Vector2.ZERO,
-		direction.rotated(-0.32) * 210.0,
-		direction.rotated(0.32) * 210.0,
-	])
-	draw_colored_polygon(points, Color(1.0, 0.9, 0.62, 0.06))
-	draw_arc(Vector2.ZERO, 210.0, direction.angle() - 0.32, direction.angle() + 0.32, 18, Color(1.0, 0.9, 0.62, 0.22), 1.5)
+	var health_ratio: float = current_health / maxf(max_health, 1.0)
+	draw_rect(Rect2(-30.0, -58.0, 60.0, 6.0), Color(0.04, 0.06, 0.08, 0.9), true)
+	draw_rect(Rect2(-30.0, -58.0, 60.0 * clampf(health_ratio, 0.0, 1.0), 6.0), Color(0.95, 0.32, 0.4, 1.0), true)
+	draw_rect(Rect2(-30.0, -58.0, 60.0, 6.0), Color(1.0, 0.8, 0.72, 0.8), false, 1.0)
+	if is_reloading and _reload_duration > 0.0:
+		var reload_ratio: float = 1.0 - _reload_remaining / _reload_duration
+		draw_rect(Rect2(-30.0, -70.0, 60.0, 5.0), Color(0.04, 0.06, 0.08, 0.95), true)
+		draw_rect(Rect2(-30.0, -70.0, 60.0 * clampf(reload_ratio, 0.0, 1.0), 5.0), Color(1.0, 0.72, 0.24, 1.0), true)
+		draw_string(ThemeDB.fallback_font, Vector2(-28.0, -75.0), "换弹", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 9, Color(1.0, 0.82, 0.42, 1.0))
+	if _muzzle_flash_remaining > 0.0 and weapon_pivot != null:
+		var muzzle: Vector2 = weapon_pivot.position + Vector2.RIGHT.rotated(weapon_pivot.rotation) * 38.0
+		draw_circle(muzzle, 8.0, Color(1.0, 0.82, 0.3, 0.85))
+		draw_line(muzzle, muzzle + Vector2.RIGHT.rotated(weapon_pivot.rotation) * 18.0, Color(1.0, 0.96, 0.7, 0.9), 3.0)
+	if _parry_remaining > 0.0:
+		var parry_angle: float = _parry_direction.angle()
+		draw_arc(Vector2.ZERO, 38.0, parry_angle - 0.72, parry_angle + 0.72, 18, Color(0.45, 0.9, 1.0, 0.9), 4.0)
+		draw_line(Vector2.from_angle(parry_angle) * 25.0, Vector2.from_angle(parry_angle) * 48.0, Color(0.8, 1.0, 1.0, 0.95), 3.0)
+	if _action_visual_remaining > 0.0:
+		var action_color: Color = Color(0.45, 0.92, 0.75, 0.9) if _action_visual_type == "heal" or _action_visual_type == "resupply" else Color(1.0, 0.72, 0.3, 0.9)
+		draw_arc(Vector2.ZERO, 30.0, -PI * 0.5, -PI * 0.5 + TAU * clampf(_action_visual_remaining / 0.8, 0.0, 1.0), 20, action_color, 3.0)
+		if _action_visual_type == "heal" or _action_visual_type == "resupply":
+			draw_line(Vector2(-7.0, 0.0), Vector2(7.0, 0.0), action_color, 3.0)
+			draw_line(Vector2(0.0, -7.0), Vector2(0.0, 7.0), action_color, 3.0)
+		elif _action_visual_type == "perfect_parry":
+			draw_circle(Vector2.ZERO, 18.0, Color(0.45, 0.9, 1.0, 0.2))

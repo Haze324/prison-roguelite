@@ -25,7 +25,24 @@ static func build_player_frames(base_path: String) -> SpriteFrames:
 	_add_animation(frames, "walk", base_path + "walk.png", 8, 12.0, true)
 	_add_animation(frames, "dash", base_path + "dash.png", 8, 15.0, false)
 	_add_animation(frames, "death", base_path + "death.png", 8, 8.0, false)
+	ensure_player_action_animations(frames, base_path)
 	return frames
+
+## 为现有角色资源补齐动作轨道。专用动作美术替换前，使用已批准的角色帧保持动作节奏和状态机接口稳定。
+static func ensure_player_action_animations(frames: SpriteFrames, base_path: String) -> void:
+	if frames == null:
+		return
+	_add_animation_if_missing(frames, "reload", base_path + "idle.png", 8, 14.0, false)
+	_add_animation_if_missing(frames, "heal", base_path + "idle.png", 8, 10.0, false)
+	_add_animation_if_missing(frames, "resupply", base_path + "idle.png", 8, 9.0, false)
+	_add_animation_if_missing(frames, "throw", base_path + "walk.png", 8, 16.0, false)
+	_add_animation_if_missing(frames, "parry", base_path + "dash.png", 8, 18.0, false)
+	_add_animation_if_missing(frames, "perfect_parry", base_path + "dash.png", 8, 22.0, false)
+	_add_animation_if_missing(frames, "hurt", base_path + "idle.png", 8, 20.0, false)
+
+static func _add_animation_if_missing(frames: SpriteFrames, animation_name: String, path: String, frame_count: int, fps: float, loop: bool) -> void:
+	if not frames.has_animation(animation_name):
+		_add_animation(frames, animation_name, path, frame_count, fps, loop)
 
 static func build_monster_frames(base_path: String, animation_prefix: String) -> SpriteFrames:
 	var frames: SpriteFrames = SpriteFrames.new()

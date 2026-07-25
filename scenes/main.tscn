@@ -50,6 +50,9 @@ offset_bottom = 1080.0
 mouse_filter = 2
 color = Color(0.075, 0.055, 0.07, 1)
 
+[node name="环境暗度" type="CanvasModulate" parent="."]
+color = Color(0.34, 0.38, 0.42, 1)
+
 [node name="MapGenerator" type="Node2D" parent="."]
 script = ExtResource("10_map_generator")
 
