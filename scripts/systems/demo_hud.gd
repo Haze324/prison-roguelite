@@ -13,6 +13,13 @@ var residual_noise: float = 0.0
 var kills: int = 0
 var boss_text: String = "SLEEPING"
 var event_text: String = "READY"
+var power_fixed: int = 0
+var power_total: int = 3
+var armor_durability: int = 0
+var armor_maximum: int = 0
+var throwable_summary: String = "-"
+var coins: int = 0
+var skill_points: int = 0
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -30,7 +37,14 @@ func set_data(
     residual: float,
     defeated: int,
     boss_status: String,
-    latest_event: String
+    latest_event: String,
+    current_power: int,
+    total_power: int,
+    current_armor: int,
+    maximum_armor: int,
+    throwables: String,
+    meta_coins: int,
+    meta_skill_points: int
 ) -> void:
     health = current_health
     max_health = maximum_health
@@ -44,6 +58,13 @@ func set_data(
     kills = defeated
     boss_text = boss_status.to_upper()
     event_text = latest_event
+    power_fixed = current_power
+    power_total = total_power
+    armor_durability = current_armor
+    armor_maximum = maximum_armor
+    throwable_summary = throwables
+    coins = meta_coins
+    skill_points = meta_skill_points
     queue_redraw()
 
 func _process(_delta: float) -> void:
@@ -58,7 +79,7 @@ func _draw() -> void:
     var warning := Color(1.0, 0.72, 0.28, 1.0)
     var danger := Color(1.0, 0.32, 0.34, 1.0)
 
-    var status_rect := Rect2(16.0, 16.0, 300.0, 166.0)
+    var status_rect := Rect2(16.0, 16.0, 330.0, 246.0)
     draw_rect(status_rect, panel_color, true)
     draw_rect(status_rect, border_color, false, 2.0)
     draw_string(font, Vector2(30.0, 42.0), "PRISON // RUN 01", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 18, Color.WHITE)
@@ -69,7 +90,13 @@ func _draw() -> void:
     draw_string(font, Vector2(82.0, 112.0), "%s   %d / %d" % [weapon_name, ammo, ammo_capacity], HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, accent)
     draw_string(font, Vector2(30.0, 136.0), "MEDKITS", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color.WHITE)
     draw_string(font, Vector2(104.0, 136.0), "x%d    STATE: %s" % [medkits, player_state], HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color(0.9, 0.82, 0.62, 1.0))
-    draw_string(font, Vector2(30.0, 160.0), "KILLS  %02d" % kills, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color(0.72, 0.84, 0.88, 1.0))
+    draw_string(font, Vector2(30.0, 160.0), "ARMOR", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color.WHITE)
+    draw_string(font, Vector2(100.0, 160.0), "%d / %d" % [armor_durability, armor_maximum], HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color(0.6, 0.82, 0.96, 1.0))
+    draw_string(font, Vector2(30.0, 184.0), "POWER", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color.WHITE)
+    draw_string(font, Vector2(100.0, 184.0), "%d / %d" % [power_fixed, power_total], HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, warning)
+    draw_string(font, Vector2(30.0, 208.0), "THROWABLES", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color.WHITE)
+    draw_string(font, Vector2(128.0, 208.0), throwable_summary, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color(0.82, 0.7, 0.95, 1.0))
+    draw_string(font, Vector2(30.0, 232.0), "KILLS %02d   COINS %d   SKILL %d" % [kills, coins, skill_points], HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, Color(0.72, 0.84, 0.88, 1.0))
 
     var mission_rect := Rect2(screen.x - 250.0, 16.0, 234.0, 166.0)
     draw_rect(mission_rect, panel_color, true)
@@ -87,7 +114,7 @@ func _draw() -> void:
     draw_rect(event_rect, Color(0.34, 0.48, 0.52, 0.9), false, 1.0)
     draw_string(font, event_rect.position + Vector2(12.0, 20.0), "> " + event_text, HORIZONTAL_ALIGNMENT_LEFT, event_rect.size.x - 24.0, 13, Color(0.88, 0.9, 0.82, 1.0))
 
-    var controls := "WASD MOVE   SHIFT DASH   LMB FIRE   R RELOAD   RMB PARRY   Q HEAL   E SAFEHOUSE"
+    var controls := "WASD MOVE   SHIFT RUN   SPACE DASH   LMB FIRE   R RELOAD   RMB AIM/PARRY   Q HEAL   E INTERACT"
     draw_string(font, Vector2(18.0, screen.y - 12.0), controls, HORIZONTAL_ALIGNMENT_LEFT, screen.x - 36.0, 11, Color(0.65, 0.72, 0.74, 1.0))
 
     var cursor: Vector2 = get_viewport().get_mouse_position()

@@ -7,12 +7,16 @@ var damage: float = 1.0
 var source: Node2D
 var lifetime: float = 1.5
 var tint: Color = Color(1.0, 0.85, 0.35, 1.0)
+var weapon_effects: Array[int] = []
 
-func setup(start_position: Vector2, direction: Vector2, speed: float, hit_damage: float, owner_node: Node2D) -> void:
+func setup(start_position: Vector2, direction: Vector2, speed: float, hit_damage: float, owner_node: Node2D, effects: Array[int] = []) -> void:
 	global_position = start_position
 	velocity = direction.normalized() * speed
 	damage = hit_damage
 	source = owner_node
+	weapon_effects = effects
+	if weapon_effects.has(GameEnums.BuffType.INCENDIARY):
+		tint = Color(1.0, 0.32, 0.12, 1.0)
 	rotation = velocity.angle()
 
 func _ready() -> void:
@@ -35,6 +39,13 @@ func _physics_process(delta: float) -> void:
 		var collider: Object = hit.get("collider") as Object
 		if collider != null and collider.has_method("take_damage"):
 			collider.take_damage(damage)
+			if weapon_effects.has(GameEnums.BuffType.INCENDIARY) and collider.has_method("apply_burn"):
+				collider.apply_burn(damage * 0.25, 3.0)
+			if weapon_effects.has(GameEnums.BuffType.EXPLOSIVE):
+				for node in get_tree().get_nodes_in_group("monsters"):
+					var monster: Node2D = node as Node2D
+					if monster != null and monster != collider and monster.global_position.distance_to(global_position) <= 72.0 and monster.has_method("take_damage"):
+						monster.take_damage(damage * 0.45)
 		queue_free()
 		return
 	global_position = next_position

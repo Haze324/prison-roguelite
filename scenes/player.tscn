@@ -12,6 +12,7 @@
 [ext_resource type="SpriteFrames" uid="uid://dt80vj6bjjaha" path="res://resources/animations/player_sprite_frames.tres" id="9_frames"]
 [ext_resource type="Texture2D" uid="uid://c5xaof26f2u7d" path="res://assets/runtime/weapons/pistol.png" id="10_pistol_visual"]
 [ext_resource type="Resource" path="res://resources/config/armor_cloth_vest.tres" id="11_armor"]
+[ext_resource type="Resource" path="res://resources/weapons/crowbar_common.tres" id="12_crowbar"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_player"]
 radius = 9.0
@@ -20,7 +21,7 @@ height = 24.0
 [node name="Player" type="CharacterBody2D" unique_id=1540385695]
 script = ExtResource("1_player")
 config = ExtResource("6_config")
-weapons = Array[ExtResource("3_d2wvv")]([ExtResource("7_pistol"), ExtResource("8_shotgun")])
+weapons = Array[ExtResource("3_d2wvv")]([ExtResource("7_pistol"), ExtResource("8_shotgun"), ExtResource("12_crowbar")])
 armor = ExtResource("11_armor")
 
 [node name="Shadow" type="Sprite2D" parent="." unique_id=1745084024]

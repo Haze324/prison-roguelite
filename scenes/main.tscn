@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/player.tscn" id="2_player"]
@@ -9,6 +9,9 @@
 [ext_resource type="Script" path="res://scripts/systems/safehouse_marker.gd" id="7_safehouse"]
 [ext_resource type="Script" path="res://scripts/systems/demo_hud.gd" id="8_hud"]
 [ext_resource type="Resource" path="res://resources/animations/bloodmonster_sprite_frames.tres" id="9_blood_frames"]
+[ext_resource type="Script" path="res://scripts/systems/map_generator.gd" id="10_map_generator"]
+[ext_resource type="Script" path="res://scripts/systems/merchant.gd" id="11_merchant"]
+[ext_resource type="Script" path="res://scripts/systems/skill_terminal.gd" id="12_skill_terminal"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
 size = Vector2(2400, 40)
@@ -47,9 +50,20 @@ offset_bottom = 1080.0
 mouse_filter = 2
 color = Color(0.15, 0.11, 0.13, 1)
 
+[node name="MapGenerator" type="Node2D" parent="."]
+script = ExtResource("10_map_generator")
+
 [node name="Safehouse" type="Node2D" parent="."]
 position = Vector2(350, 300)
 script = ExtResource("7_safehouse")
+
+[node name="Merchant" type="Node2D" parent="."]
+position = Vector2(430, 300)
+script = ExtResource("11_merchant")
+
+[node name="SkillTerminal" type="Node2D" parent="."]
+position = Vector2(270, 300)
+script = ExtResource("12_skill_terminal")
 
 [node name="NorthWall" type="StaticBody2D" parent="."]
 position = Vector2(600, -300)

@@ -10,6 +10,9 @@ const BOSS_DATA: MonsterData = preload("res://resources/monsters/boss_grunt.tres
 @onready var event_label: Label = $HUD/Event
 @onready var noise_manager: NoiseManager = $NoiseManager
 @onready var demo_hud: DemoHUD = $HUD/DemoHUD
+@onready var map_generator: MapGenerator = $MapGenerator
+@onready var merchant: Merchant = $Merchant
+@onready var skill_terminal: SkillTerminal = $SkillTerminal
 
 var _boss: Monster
 var _kills: int = 0
@@ -28,6 +31,8 @@ var _safehouse_rect := Rect2(260.0, 230.0, 180.0, 140.0)
 func _ready() -> void:
 	demon.set_target(player)
 	blood_monster.set_target(player)
+	merchant.setup(player)
+	skill_terminal.setup(player)
 	EventBus.weapon_switched.connect(_on_weapon_switched)
 	EventBus.shot_fired.connect(_on_shot_fired)
 	EventBus.noise_emitted.connect(_on_noise_emitted)
@@ -40,9 +45,12 @@ func _ready() -> void:
 	EventBus.player_parried.connect(_on_player_parried)
 	EventBus.consumable_used.connect(_on_consumable_used)
 	EventBus.boss_awakened.connect(_on_boss_awakened)
+	EventBus.boss_phase_changed.connect(_on_boss_phase_changed)
+	EventBus.boss_ability_requested.connect(_on_boss_ability_requested)
 	EventBus.throwable_thrown.connect(_on_throwable_thrown)
 	EventBus.power_node_fixed.connect(_on_power_node_fixed)
 	EventBus.run_completed.connect(_on_run_completed)
+	map_generator.generate()
 	_spawn_pickup(Vector2(330.0, 480.0), "Medkit", 1, Color(0.85, 0.25, 0.3, 1.0))
 	_spawn_pickup(Vector2(760.0, 650.0), "Ammo", 1, Color(0.3, 0.7, 0.9, 1.0))
 	_spawn_pickup(Vector2(1180.0, 330.0), "Medkit", 1, Color(0.85, 0.25, 0.3, 1.0))
@@ -51,7 +59,7 @@ func _ready() -> void:
 	add_child(_exit_gate)
 	_exit_gate.position = Vector2(1500.0, 760.0)
 	_exit_gate.setup(player)
-	_last_event = "WASD move, LMB fire, RMB parry"
+	_last_event = "WASD move, Shift run, Space dash, LMB fire"
 
 func _process(delta: float) -> void:
 	if _death_timer > 0.0:
@@ -94,6 +102,14 @@ func _update_hud() -> void:
 		_kills,
 		boss_text,
 	]
+	var armor_current: int = player.armor.durability if player.armor != null else 0
+	var armor_maximum: int = player.armor.max_durability if player.armor != null else 0
+	var throwable_summary: String = "F%d S%d G%d M%d" % [
+		int(player.throwable_counts.get("flare", 0)),
+		int(player.throwable_counts.get("smoke", 0)),
+		int(player.throwable_counts.get("grenade", 0)),
+		int(player.throwable_counts.get("mine", 0)),
+	]
 	event_label.text = _last_event
 	demo_hud.set_data(
 		player.current_health,
@@ -107,16 +123,26 @@ func _update_hud() -> void:
 		_residual_noise,
 		_kills,
 		boss_text,
-		_last_event
+		_last_event,
+		_power_fixed,
+		_total_power_nodes,
+		armor_current,
+		armor_maximum,
+		throwable_summary,
+		MetaProgression.coins,
+		MetaProgression.skill_points
 	)
 
 func _on_shot_fired(weapon_data: WeaponData, position: Vector2, direction: Vector2) -> void:
 	if weapon_data.is_melee:
 		_perform_melee_attack(weapon_data, position, direction)
-		EventBus.noise_emitted.emit(weapon_data.noise, position, player)
+		var melee_noise: int = 0 if weapon_data.effects.has(GameEnums.BuffType.SILENCED) else weapon_data.noise
+		EventBus.noise_emitted.emit(melee_noise, position, player)
 		_last_event = "Melee strike: %s" % weapon_data.weapon_name
 		return
 	var pellet_count: int = maxi(weapon_data.pellets, 1)
+	if weapon_data.effects.has(GameEnums.BuffType.TWIN_SHOT):
+		pellet_count *= 2
 	for pellet_index in pellet_count:
 		var spread_angle: float = 0.0
 		if pellet_count > 1:
@@ -124,8 +150,9 @@ func _on_shot_fired(weapon_data: WeaponData, position: Vector2, direction: Vecto
 		var projectile: Projectile = Projectile.new()
 		add_child(projectile)
 		var shot_damage: float = DamageSystem.calculate_weapon_damage(weapon_data, 0.0, player.is_aiming)
-		projectile.setup(position, direction.rotated(spread_angle), weapon_data.projectile_speed, shot_damage, player)
-	EventBus.noise_emitted.emit(weapon_data.noise, position, player)
+		projectile.setup(position, direction.rotated(spread_angle), weapon_data.projectile_speed, shot_damage, player, weapon_data.effects)
+	var shot_noise: int = 0 if weapon_data.effects.has(GameEnums.BuffType.SILENCED) else weapon_data.noise
+	EventBus.noise_emitted.emit(shot_noise, position, player)
 	_last_event = "Fired %s (%d pellet%s)" % [weapon_data.weapon_name, pellet_count, "" if pellet_count == 1 else "s"]
 
 func _on_throwable_thrown(throwable_type: int, position: Vector2, _direction: Vector2, source: Node2D) -> void:
@@ -158,6 +185,8 @@ func _on_power_node_fixed(node: Node2D, _fixed_count: int, _total_count: int) ->
 	if _power_fixed >= _total_power_nodes:
 		_last_event = "All power restored — the Warden is awake"
 		EventBus.boss_awakened.emit(null)
+		if _boss_defeated and _exit_gate != null:
+			_exit_gate.set_available(true)
 
 func _on_run_completed(_escaped: bool, _reported_kills: int, _reported_coins: int) -> void:
 	if _run_over:
@@ -204,6 +233,30 @@ func _on_boss_awakened(_unused: Node2D) -> void:
 	_boss = boss
 	_last_event = "BOSS AWAKENED — survive and defeat the Warden"
 	EventBus.boss_awakened.emit(boss)
+
+func _on_boss_phase_changed(boss: Node2D, phase: int) -> void:
+	if boss == _boss:
+		_last_event = "WARDEN PHASE %d — telegraphed attack incoming" % phase
+
+func _on_boss_ability_requested(boss: Node2D, ability_type: int, target_position: Vector2) -> void:
+	if boss != _boss or _run_over:
+		return
+	if ability_type == 1:
+		_spawn_hazard(target_position, ability_type)
+		_last_event = "WARDEN SLAM — leave the warning circle"
+		return
+	var origin: Vector2 = boss.global_position
+	var base_angle: float = origin.angle_to_point(target_position)
+	for index in 3:
+		var offset: Vector2 = Vector2.from_angle(base_angle + (index - 1) * 0.45) * 110.0
+		_spawn_hazard(target_position + offset, ability_type)
+	_last_event = "WARDEN ACID SPRAY — three zones marked"
+
+func _spawn_hazard(position: Vector2, hazard_type: int) -> void:
+	var hazard := HazardZone.new()
+	add_child(hazard)
+	hazard.position = position
+	hazard.setup(player, hazard_type)
 
 func _spawn_pickup(position: Vector2, item_name: String, amount: int, tint: Color) -> void:
 	var pickup: Pickup = Pickup.new()
