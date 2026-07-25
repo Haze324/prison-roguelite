@@ -1,44 +1,45 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene format=3 uid="uid://ycokh7v110ea"]
 
-[ext_resource type="Script" path="res://scripts/entities/monster/monster.gd" id="1_monster"]
-[ext_resource type="Script" path="res://scripts/core/state_machine.gd" id="2_machine"]
-[ext_resource type="Script" path="res://scripts/entities/monster/states/monster_idle_state.gd" id="3_idle"]
-[ext_resource type="Script" path="res://scripts/entities/monster/states/monster_patrol_state.gd" id="4_patrol"]
-[ext_resource type="Script" path="res://scripts/entities/monster/states/monster_chase_state.gd" id="5_chase"]
-[ext_resource type="Script" path="res://scripts/entities/monster/states/monster_attack_state.gd" id="6_attack"]
-[ext_resource type="Script" path="res://scripts/entities/monster/states/monster_dead_state.gd" id="7_dead"]
-[ext_resource type="Resource" path="res://resources/animations/monster_sprite_frames.tres" id="8_frames"]
+[ext_resource type="Script" uid="uid://dy8ldnusnd8mq" path="res://scripts/entities/monster/monster.gd" id="1_monster"]
+[ext_resource type="Script" uid="uid://bmfgaojijspox" path="res://scripts/core/state_machine.gd" id="2_machine"]
+[ext_resource type="Script" uid="uid://005m03j12ose" path="res://scripts/entities/monster/states/monster_idle_state.gd" id="3_idle"]
+[ext_resource type="Script" uid="uid://b4b7eeyipe68v" path="res://scripts/entities/monster/states/monster_patrol_state.gd" id="4_patrol"]
+[ext_resource type="Script" uid="uid://bg5efyui52m3" path="res://scripts/entities/monster/states/monster_chase_state.gd" id="5_chase"]
+[ext_resource type="Script" uid="uid://doo3cn25810kt" path="res://scripts/entities/monster/states/monster_attack_state.gd" id="6_attack"]
+[ext_resource type="Script" uid="uid://byl8nut6m7bt8" path="res://scripts/entities/monster/states/monster_dead_state.gd" id="7_dead"]
+[ext_resource type="SpriteFrames" uid="uid://d3odnqowgf20m" path="res://resources/animations/monster_sprite_frames.tres" id="8_frames"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_monster"]
-radius = 22.0
-height = 50.0
+radius = 9.0
+height = 18.0
 
-[node name="Monster" type="CharacterBody2D"]
+[node name="Monster" type="CharacterBody2D" unique_id=1741148472]
 script = ExtResource("1_monster")
 
-[node name="BodySprite" type="AnimatedSprite2D" parent="."]
+[node name="BodySprite" type="AnimatedSprite2D" parent="." unique_id=1776949423]
 position = Vector2(0, -10)
 sprite_frames = ExtResource("8_frames")
 animation = &"idle"
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1355406872]
+position = Vector2(3, -10)
 shape = SubResource("CapsuleShape2D_monster")
 
-[node name="StateMachine" type="Node" parent="."]
+[node name="StateMachine" type="Node" parent="." unique_id=2057098211]
 script = ExtResource("2_machine")
 initial_state = NodePath("Idle")
 
-[node name="Idle" type="Node" parent="StateMachine"]
+[node name="Idle" type="Node" parent="StateMachine" unique_id=1674227699]
 script = ExtResource("3_idle")
 
-[node name="Patrol" type="Node" parent="StateMachine"]
+[node name="Patrol" type="Node" parent="StateMachine" unique_id=648021461]
 script = ExtResource("4_patrol")
 
-[node name="Chase" type="Node" parent="StateMachine"]
+[node name="Chase" type="Node" parent="StateMachine" unique_id=1772300465]
 script = ExtResource("5_chase")
 
-[node name="Attack" type="Node" parent="StateMachine"]
+[node name="Attack" type="Node" parent="StateMachine" unique_id=1729695402]
 script = ExtResource("6_attack")
 
-[node name="Dead" type="Node" parent="StateMachine"]
+[node name="Dead" type="Node" parent="StateMachine" unique_id=170527071]
 script = ExtResource("7_dead")

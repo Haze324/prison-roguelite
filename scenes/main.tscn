@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/player.tscn" id="2_player"]
@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://scripts/systems/noise_manager.gd" id="6_noise"]
 [ext_resource type="Script" path="res://scripts/systems/safehouse_marker.gd" id="7_safehouse"]
 [ext_resource type="Script" path="res://scripts/systems/demo_hud.gd" id="8_hud"]
+[ext_resource type="Resource" path="res://resources/animations/bloodmonster_sprite_frames.tres" id="9_blood_frames"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
 size = Vector2(2400, 40)
@@ -84,6 +85,10 @@ data = ExtResource("4_demon")
 [node name="BloodMonsterGrunt" parent="." instance=ExtResource("3_monster")]
 position = Vector2(960, 520)
 data = ExtResource("5_blood")
+
+[node name="BodySprite" parent="BloodMonsterGrunt" index="0"]
+sprite_frames = ExtResource("9_blood_frames")
+animation = &"idle"
 
 [node name="NoiseManager" type="Node" parent="."]
 script = ExtResource("6_noise")

@@ -1,53 +1,59 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene format=3 uid="uid://cuo1mg6pxano"]
 
-[ext_resource type="Script" path="res://scripts/entities/player/player.gd" id="1_player"]
-[ext_resource type="Script" path="res://scripts/core/state_machine.gd" id="2_machine"]
-[ext_resource type="Script" path="res://scripts/entities/player/states/player_idle_state.gd" id="3_idle"]
-[ext_resource type="Script" path="res://scripts/entities/player/states/player_move_state.gd" id="4_move"]
-[ext_resource type="Script" path="res://scripts/entities/player/states/player_dash_state.gd" id="5_dash"]
-[ext_resource type="Resource" path="res://resources/config/player_config.tres" id="6_config"]
+[ext_resource type="Script" uid="uid://dlqacj8yv1p5w" path="res://scripts/entities/player/player.gd" id="1_player"]
+[ext_resource type="Script" uid="uid://bmfgaojijspox" path="res://scripts/core/state_machine.gd" id="2_machine"]
+[ext_resource type="Script" uid="uid://b3upqojjpxj7m" path="res://scripts/data/weapon_data.gd" id="3_d2wvv"]
+[ext_resource type="Script" uid="uid://dn5pvkl61ptge" path="res://scripts/entities/player/states/player_idle_state.gd" id="3_idle"]
+[ext_resource type="Script" uid="uid://dko8l1pomcia2" path="res://scripts/entities/player/states/player_move_state.gd" id="4_move"]
+[ext_resource type="Script" uid="uid://cvyscd0kjq8lt" path="res://scripts/entities/player/states/player_dash_state.gd" id="5_dash"]
+[ext_resource type="Resource" uid="uid://cwsqvasjdiw36" path="res://resources/config/player_config.tres" id="6_config"]
 [ext_resource type="Resource" path="res://resources/weapons/pistol_common.tres" id="7_pistol"]
 [ext_resource type="Resource" path="res://resources/weapons/shotgun_common.tres" id="8_shotgun"]
-[ext_resource type="Resource" path="res://resources/animations/player_sprite_frames.tres" id="9_frames"]
+[ext_resource type="SpriteFrames" uid="uid://dt80vj6bjjaha" path="res://resources/animations/player_sprite_frames.tres" id="9_frames"]
+[ext_resource type="Texture2D" uid="uid://c5xaof26f2u7d" path="res://assets/runtime/weapons/pistol.png" id="10_pistol_visual"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_player"]
-radius = 18.0
-height = 36.0
+radius = 9.0
+height = 24.0
 
-[node name="Player" type="CharacterBody2D"]
+[node name="Player" type="CharacterBody2D" unique_id=1540385695]
 script = ExtResource("1_player")
 config = ExtResource("6_config")
-weapons = [ExtResource("7_pistol"), ExtResource("8_shotgun")]
+weapons = Array[ExtResource("3_d2wvv")]([ExtResource("7_pistol"), ExtResource("8_shotgun")])
 
-[node name="Shadow" type="Sprite2D" parent="."]
-position = Vector2(0, 25)
+[node name="Shadow" type="Sprite2D" parent="." unique_id=1745084024]
 modulate = Color(0, 0, 0, 0.45)
+position = Vector2(0, 25)
 scale = Vector2(1.5, 0.55)
 
-[node name="BodySprite" type="AnimatedSprite2D" parent="."]
+[node name="BodySprite" type="AnimatedSprite2D" parent="." unique_id=1072972875]
 position = Vector2(0, -10)
 sprite_frames = ExtResource("9_frames")
-animation = &"idle"
+animation = &"dash"
+frame = 7
+frame_progress = 1.0
 
-[node name="WeaponPivot" type="Node2D" parent="."]
-position = Vector2(18, -8)
+[node name="WeaponPivot" type="Node2D" parent="." unique_id=1040703616]
+position = Vector2(10, -9)
 
-[node name="WeaponSprite" type="Sprite2D" parent="WeaponPivot"]
-position = Vector2(7, 0)
-scale = Vector2(2, 2)
+[node name="WeaponSprite" type="Sprite2D" parent="WeaponPivot" unique_id=1554838837]
+position = Vector2(3, -2)
+scale = Vector2(0.8, 0.8)
+texture = ExtResource("10_pistol_visual")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=173844322]
+position = Vector2(0, -11)
 shape = SubResource("CapsuleShape2D_player")
 
-[node name="StateMachine" type="Node" parent="."]
+[node name="StateMachine" type="Node" parent="." unique_id=1836808487]
 script = ExtResource("2_machine")
 initial_state = NodePath("Idle")
 
-[node name="Idle" type="Node" parent="StateMachine"]
+[node name="Idle" type="Node" parent="StateMachine" unique_id=1717423495]
 script = ExtResource("3_idle")
 
-[node name="Move" type="Node" parent="StateMachine"]
+[node name="Move" type="Node" parent="StateMachine" unique_id=914711230]
 script = ExtResource("4_move")
 
-[node name="Dash" type="Node" parent="StateMachine"]
+[node name="Dash" type="Node" parent="StateMachine" unique_id=1466573957]
 script = ExtResource("5_dash")
