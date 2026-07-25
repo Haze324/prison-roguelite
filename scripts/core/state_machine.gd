@@ -18,7 +18,7 @@ func _ready() -> void:
 func start() -> void:
 	if current_state != null:
 		return
-	var state_name := String(initial_state).get_file()
+	var state_name: String = String(initial_state).get_file()
 	if state_name.is_empty():
 		state_name = String(initial_state)
 	if _states.has(state_name):
@@ -27,12 +27,14 @@ func start() -> void:
 func transition_to(state_name: String, data: Dictionary = {}) -> void:
 	if not _states.has(state_name) or _states[state_name] == current_state:
 		return
-	var previous_name := current_state.name if current_state != null else ""
+	var previous_name: String = ""
+	if current_state != null:
+		previous_name = String(current_state.name)
 	if current_state != null:
 		current_state.exit()
 	current_state = _states[state_name]
 	current_state.enter(data)
-	var owner_node := get_parent()
+	var owner_node: Node = get_parent()
 	if owner_node.has_signal("state_changed"):
 		owner_node.state_changed.emit(previous_name, state_name)
 	EventBus.player_state_changed.emit(previous_name, state_name)
@@ -43,4 +45,3 @@ func physics_update(delta: float) -> void:
 
 func _on_transition_requested(next_state: String, data: Dictionary) -> void:
 	transition_to(next_state, data)
-
