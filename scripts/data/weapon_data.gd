@@ -4,11 +4,17 @@ extends Resource
 ## 武器名称。
 @export var weapon_name: String = ""
 
+## 武器类别。
+@export var weapon_type: int = GameEnums.WeaponType.PISTOL
+
 ## 武器图像。
 @export var icon: Texture2D
 
 ## 单发基础伤害，后续由伤害管线读取。
 @export var damage: float = 15.0
+
+## 稀有度，影响基础伤害和 Buff 槽位。
+@export var rarity: int = GameEnums.Rarity.COMMON
 
 ## 弹匣容量；近战武器可设为 0。
 @export var mag_size: int = 12
@@ -30,3 +36,16 @@ extends Resource
 
 ## 子弹飞行速度。
 @export var projectile_speed: float = 900.0
+
+## 有效射程与散布控制。
+@export var range: float = 400.0
+
+## 是否为近战武器。
+@export var is_melee: bool = false
+
+## 近战攻击角度和范围。
+@export var hitbox_angle: float = 120.0
+@export var hitbox_range: float = 64.0
+
+## Buff 类型数组，数值来自 GameEnums.BuffType。
+@export var effects: Array[int] = []

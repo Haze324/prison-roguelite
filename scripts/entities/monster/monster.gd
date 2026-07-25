@@ -95,7 +95,7 @@ func perform_attack() -> void:
 	if not is_instance_valid(target) or global_position.distance_to(target.global_position) > data.attack_range + 12.0:
 		return
 	if target.has_method("take_damage"):
-		target.take_damage(12.0, self)
+		target.take_damage(data.attack_damage, self)
 
 func advance_death(delta: float) -> bool:
 	death_timer += delta
@@ -104,7 +104,7 @@ func advance_death(delta: float) -> bool:
 func take_damage(amount: float) -> void:
 	if state_machine.current_state == $StateMachine/Dead or current_health <= 0.0:
 		return
-	current_health = maxf(current_health - amount, 0.0)
+	current_health = maxf(current_health - amount * (1.0 - data.natural_armor), 0.0)
 	health_changed.emit(current_health, data.max_health)
 	queue_redraw()
 	if current_health <= 0.0:
@@ -121,9 +121,9 @@ func _draw() -> void:
 	draw_string(ThemeDB.fallback_font, Vector2(-38.0, -67.0), data.monster_name.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, 76.0, 10, Color(1.0, 0.78, 0.68, 1.0))
 
 func hear_noise(source_position: Vector2, amount: int) -> void:
-	if current_health <= 0.0 or not is_instance_valid(target) or amount <= 0:
+	if current_health <= 0.0 or not is_instance_valid(target) or amount < data.hearing_threshold:
 		return
-	if global_position.distance_to(source_position) > data.vision_range * 1.5:
+	if global_position.distance_to(source_position) > data.hearing_range:
 		return
 	noise_target = source_position
 	patrol_direction = global_position.direction_to(source_position)

@@ -4,6 +4,14 @@ extends Resource
 ## 怪物名称。
 @export var monster_name: String = ""
 
+@export var tier: int = GameEnums.MonsterTier.GRUNT
+@export var hearing_threshold: int = GameEnums.NoiseLevel.MEDIUM
+@export var hearing_range: float = 400.0
+@export_range(0.0, 0.8) var natural_armor: float = 0.0
+@export var attack_damage: float = 12.0
+@export var attack_type: int = GameEnums.AttackType.MELEE_LIGHT
+@export var is_boss: bool = false
+
 ## 怪物最大生命值，为后续伤害系统预留。
 @export var max_health: float = 30.0
 
@@ -27,4 +35,3 @@ extends Resource
 
 ## 怪物显示缩放。
 @export var sprite_scale: float = 1.5
-

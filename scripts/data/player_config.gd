@@ -4,6 +4,13 @@ extends Resource
 ## 玩家移动速度（像素/秒）。
 @export var move_speed: float = 250.0
 
+## 跑步速度；按住跑步键时使用。
+@export var run_speed: float = 340.0
+
+## 走路与跑步的噪声值。
+@export var walk_noise: int = 1
+@export var run_noise: int = 6
+
 ## 翻滚/冲刺速度（像素/秒）。
 @export var dash_speed: float = 800.0
 
@@ -22,3 +29,5 @@ extends Resource
 ## 武器挂点相对玩家中心的偏移。
 @export var hand_offset: Vector2 = Vector2(18.0, -8.0)
 
+## 最大生命值。
+@export var max_health: float = 100.0

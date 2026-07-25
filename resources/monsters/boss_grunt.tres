@@ -5,6 +5,13 @@
 [resource]
 script = ExtResource("1_data")
 monster_name = "Warden Abomination"
+tier = 2
+hearing_threshold = 0
+hearing_range = 1200.0
+natural_armor = 0.1
+attack_damage = 18.0
+attack_type = 1
+is_boss = true
 max_health = 180.0
 move_speed = 82.0
 vision_range = 720.0

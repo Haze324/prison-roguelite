@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ArmorData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/armor_data.gd" id="1_armor"]
+
+[resource]
+script = ExtResource("1_armor")
+armor_name = "Cloth Vest"
+damage_reduction = 0.15
+max_durability = 3
+durability = 3
+special_effect = "基础防护"

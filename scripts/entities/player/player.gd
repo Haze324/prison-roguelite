@@ -8,6 +8,7 @@ signal ammo_changed(current: int, capacity: int)
 
 @export var config: PlayerConfig
 @export var weapons: Array[WeaponData] = []
+@export var armor: ArmorData
 
 var max_health: float = 100.0
 var current_health: float = 100.0
@@ -20,6 +21,8 @@ var _reload_remaining: float = 0.0
 var _parry_remaining: float = 0.0
 var _parry_cooldown_remaining: float = 0.0
 var _damage_invulnerability: float = 0.0
+var _movement_noise_timer: float = 0.0
+var is_aiming: bool = false
 
 @onready var body_sprite: AnimatedSprite2D = $BodySprite
 @onready var shadow: Sprite2D = $Shadow
@@ -39,6 +42,10 @@ func _ready() -> void:
 	state_machine.state_changed.connect(_on_state_machine_changed)
 	if config == null:
 		config = PlayerConfig.new()
+	max_health = config.max_health
+	current_health = max_health
+	if armor != null:
+		armor_reduction = armor.damage_reduction
 	var capsule := CapsuleShape2D.new()
 	capsule.radius = config.collision_radius
 	capsule.height = config.collision_radius * 2.0
@@ -66,6 +73,7 @@ func _physics_process(delta: float) -> void:
 	_parry_remaining = maxf(_parry_remaining - delta, 0.0)
 	_parry_cooldown_remaining = maxf(_parry_cooldown_remaining - delta, 0.0)
 	_damage_invulnerability = maxf(_damage_invulnerability - delta, 0.0)
+	_movement_noise_timer = maxf(_movement_noise_timer - delta, 0.0)
 	if is_reloading:
 		_reload_remaining = maxf(_reload_remaining - delta, 0.0)
 		if _reload_remaining <= 0.0:
@@ -80,6 +88,7 @@ func _physics_process(delta: float) -> void:
 		_dash_requested = true
 	state_machine.physics_update(delta)
 	update_aim()
+	is_aiming = Input.is_action_pressed("aim")
 	if Input.is_action_pressed("shoot"):
 		shoot()
 	_check_weapon_input()
@@ -88,8 +97,14 @@ func get_move_direction() -> Vector2:
 	return Input.get_vector("move_left", "move_right", "move_up", "move_down").normalized()
 
 func apply_normal_movement(direction: Vector2, _delta: float) -> void:
-	velocity = direction * config.move_speed
+	var running: bool = Input.is_action_pressed("run") and direction != Vector2.ZERO
+	var movement_speed: float = config.run_speed if running else config.move_speed
+	velocity = direction * movement_speed
 	move_and_slide()
+	if direction != Vector2.ZERO and _movement_noise_timer <= 0.0:
+		var movement_noise: int = config.run_noise if running else config.walk_noise
+		EventBus.noise_emitted.emit(movement_noise, global_position, self)
+		_movement_noise_timer = 0.35 if running else 0.55
 
 func consume_dash_request() -> bool:
 	if not _dash_requested or _dash_cooldown_remaining > 0.0:
@@ -186,7 +201,7 @@ func _finish_reload() -> void:
 	ammo_changed.emit(current_ammo, weapons[current_weapon_index].mag_size)
 
 func start_parry() -> void:
-	if _parry_cooldown_remaining > 0.0 or is_reloading:
+	if weapons.is_empty() or not weapons[current_weapon_index].is_melee or _parry_cooldown_remaining > 0.0 or is_reloading:
 		return
 	_parry_remaining = 0.2
 	_parry_cooldown_remaining = 0.5
@@ -209,7 +224,14 @@ func take_damage(amount: float, attacker: Node2D = null) -> void:
 	if attacker != null and resolve_parry(attacker):
 		return
 	_damage_invulnerability = 0.35
-	current_health = maxf(current_health - amount * (1.0 - armor_reduction), 0.0)
+	var final_damage: float = amount
+	if armor != null:
+		final_damage = armor.absorb_damage(amount)
+	else:
+		final_damage *= 1.0 - armor_reduction
+	current_health = maxf(current_health - final_damage, 0.0)
+	if armor != null:
+		EventBus.armor_changed.emit(armor.armor_name, armor.durability, armor.max_durability)
 	health_changed.emit(current_health, max_health)
 	EventBus.player_health_changed.emit(current_health, max_health)
 	if current_health <= 0.0:
@@ -232,6 +254,9 @@ func use_medkit() -> bool:
 func restore_at_safehouse() -> void:
 	current_health = max_health
 	medkits = 3
+	if armor != null:
+		armor.repair()
+		EventBus.armor_changed.emit(armor.armor_name, armor.durability, armor.max_durability)
 	if not weapons.is_empty():
 		current_ammo = weapons[current_weapon_index].mag_size
 	health_changed.emit(current_health, max_health)

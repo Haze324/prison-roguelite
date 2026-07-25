@@ -4,4 +4,14 @@
 
 [resource]
 script = ExtResource("1_config")
+move_speed = 250.0
+run_speed = 340.0
+walk_noise = 1
+run_noise = 6
+dash_speed = 800.0
+dash_duration = 0.2
+dash_cooldown = 0.8
+collision_radius = 18.0
 body_scale = 2.0
+max_health = 100.0
+hand_offset = Vector2(18, -8)

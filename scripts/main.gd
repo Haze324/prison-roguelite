@@ -98,6 +98,11 @@ func _update_hud() -> void:
 	)
 
 func _on_shot_fired(weapon_data: WeaponData, position: Vector2, direction: Vector2) -> void:
+	if weapon_data.is_melee:
+		_perform_melee_attack(weapon_data, position, direction)
+		EventBus.noise_emitted.emit(weapon_data.noise, position, player)
+		_last_event = "Melee strike: %s" % weapon_data.weapon_name
+		return
 	var pellet_count: int = maxi(weapon_data.pellets, 1)
 	for pellet_index in pellet_count:
 		var spread_angle: float = 0.0
@@ -105,9 +110,21 @@ func _on_shot_fired(weapon_data: WeaponData, position: Vector2, direction: Vecto
 			spread_angle = deg_to_rad(randf_range(-weapon_data.spread, weapon_data.spread))
 		var projectile: Projectile = Projectile.new()
 		add_child(projectile)
-		projectile.setup(position, direction.rotated(spread_angle), weapon_data.projectile_speed, weapon_data.damage, player)
+		var shot_damage: float = DamageSystem.calculate_weapon_damage(weapon_data, 0.0, player.is_aiming)
+		projectile.setup(position, direction.rotated(spread_angle), weapon_data.projectile_speed, shot_damage, player)
 	EventBus.noise_emitted.emit(weapon_data.noise, position, player)
 	_last_event = "Fired %s (%d pellet%s)" % [weapon_data.weapon_name, pellet_count, "" if pellet_count == 1 else "s"]
+
+func _perform_melee_attack(weapon_data: WeaponData, position: Vector2, direction: Vector2) -> void:
+	var facing: Vector2 = direction.normalized()
+	var minimum_dot: float = cos(deg_to_rad(weapon_data.hitbox_angle * 0.5))
+	for node in get_tree().get_nodes_in_group("monsters"):
+		var monster: Monster = node as Monster
+		if monster == null or not is_instance_valid(monster):
+			continue
+		var offset: Vector2 = monster.global_position - position
+		if offset.length() <= weapon_data.hitbox_range and facing.dot(offset.normalized()) >= minimum_dot:
+			monster.take_damage(DamageSystem.calculate_weapon_damage(weapon_data, offset.length(), false))
 
 func _on_noise_emitted(amount: int, position: Vector2, source: Node2D) -> void:
 	for node in get_tree().get_nodes_in_group("monsters"):
