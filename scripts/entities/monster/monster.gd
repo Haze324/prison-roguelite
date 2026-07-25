@@ -18,6 +18,11 @@ var attack_timer := 0.0
 var death_timer := 0.0
 var attack_hit_applied := false
 var noise_target := Vector2.ZERO
+var alert_remaining: float = 0.0
+var search_remaining: float = 0.0
+var target_lost_remaining: float = 0.0
+var boss_wander_remaining: float = 0.0
+var boss_wander_direction: Vector2 = Vector2.RIGHT
 var boss_phase: int = 1
 var boss_transition_remaining: float = 0.0
 var boss_ability_cooldown: float = 0.0
@@ -73,6 +78,54 @@ func begin_patrol() -> void:
 	patrol_direction = Vector2.from_angle(randf_range(-PI, PI))
 	patrol_timer = randf_range(1.0, 2.5)
 	play_animation("walk")
+
+func begin_alert() -> void:
+	alert_remaining = 2.5
+	velocity = Vector2.ZERO
+
+func advance_alert(delta: float) -> bool:
+	alert_remaining = maxf(alert_remaining - delta, 0.0)
+	var distance_to_noise: float = global_position.distance_to(noise_target)
+	if distance_to_noise > 20.0:
+		var direction := global_position.direction_to(noise_target)
+		velocity = direction * data.move_speed
+		move_and_slide()
+		body_sprite.flip_h = direction.x < 0.0
+	else:
+		velocity = Vector2.ZERO
+		play_animation("idle")
+	return alert_remaining <= 0.0
+
+func begin_search() -> void:
+	search_remaining = 8.0
+	patrol_timer = 0.0
+	velocity = Vector2.ZERO
+
+func advance_search(delta: float) -> bool:
+	search_remaining = maxf(search_remaining - delta, 0.0)
+	if global_position.distance_to(noise_target) > 24.0:
+		var direction := global_position.direction_to(noise_target)
+		velocity = direction * data.move_speed
+		move_and_slide()
+		body_sprite.flip_h = direction.x < 0.0
+	else:
+		if patrol_timer <= 0.0:
+			patrol_direction = Vector2.from_angle(randf_range(-PI, PI))
+			patrol_timer = randf_range(0.6, 1.2)
+		velocity = patrol_direction * data.move_speed * 0.45
+		move_and_slide()
+		body_sprite.flip_h = patrol_direction.x < 0.0
+	return search_remaining <= 0.0
+
+func advance_boss_wander(delta: float) -> void:
+	if boss_wander_remaining <= 0.0:
+		boss_wander_direction = Vector2.from_angle(randf_range(-PI, PI))
+		boss_wander_remaining = randf_range(2.0, 4.0)
+	boss_wander_remaining = maxf(boss_wander_remaining - delta, 0.0)
+	velocity = boss_wander_direction * data.move_speed * 0.65
+	move_and_slide()
+	body_sprite.flip_h = boss_wander_direction.x < 0.0
+	play_animation("idle")
 
 func advance_patrol(delta: float) -> bool:
 	patrol_timer = maxf(patrol_timer - delta, 0.0)
@@ -171,8 +224,14 @@ func hear_noise(source_position: Vector2, amount: int) -> void:
 	patrol_direction = global_position.direction_to(source_position)
 	patrol_timer = 2.5
 	EventBus.monster_alerted.emit(self, source_position)
-	if state_machine.current_state != $StateMachine/Dead and not can_detect_target():
-		state_machine.transition_to("Patrol")
+	if state_machine.current_state == $StateMachine/Dead:
+		return
+	if data.is_boss:
+		target_lost_remaining = 0.0
+		if state_machine.current_state.name == "Idle":
+			state_machine.transition_to("Chase")
+	elif not can_detect_target():
+		state_machine.transition_to("Alert")
 
 func _on_state_changed(previous_state: String, next_state: String) -> void:
 	state_changed.emit(previous_state, next_state)

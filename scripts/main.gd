@@ -52,6 +52,8 @@ func _ready() -> void:
 	EventBus.throwable_thrown.connect(_on_throwable_thrown)
 	EventBus.power_node_fixed.connect(_on_power_node_fixed)
 	EventBus.run_completed.connect(_on_run_completed)
+	EventBus.run_start_requested.connect(_on_run_start_requested)
+	EventBus.run_restart_requested.connect(_on_run_restart_requested)
 	map_generator.generate()
 	_spawn_pickup(Vector2(330.0, 480.0), "Medkit", 1, Color(0.85, 0.25, 0.3, 1.0))
 	_spawn_pickup(Vector2(760.0, 650.0), "Ammo", 1, Color(0.3, 0.7, 0.9, 1.0))
@@ -63,13 +65,9 @@ func _ready() -> void:
 	_exit_gate.position = Vector2(1500.0, 760.0)
 	_exit_gate.setup(player)
 	_last_event = "WASD move, Shift run, Space dash, LMB fire"
+	demo_hud.show_main_menu()
 
 func _process(delta: float) -> void:
-	if _death_timer > 0.0:
-		_death_timer -= delta
-		if _death_timer <= 0.0:
-			get_tree().reload_current_scene()
-			return
 	if not _run_over:
 		_collect_nearby_pickups()
 		if Input.is_action_just_pressed("interact") and _safehouse_rect.has_point(player.global_position):
@@ -184,6 +182,9 @@ func _on_power_node_fixed(node: Node2D, _fixed_count: int, _total_count: int) ->
 		return
 	_power_seen[node.get_instance_id()] = true
 	_power_fixed += 1
+	var power_node: PowerNode = node as PowerNode
+	if power_node != null:
+		map_generator.set_power_node_fixed(power_node.node_index)
 	EventBus.noise_emitted.emit(95, node.global_position, player)
 	_last_event = "Power node %d/%d fixed — noise broadcast" % [_power_fixed, _total_power_nodes]
 	if _power_fixed >= _total_power_nodes:
@@ -201,6 +202,7 @@ func _on_run_completed(_escaped: bool, _reported_kills: int, _reported_coins: in
 	MetaProgression.add_skill_points(1)
 	MetaProgression.record_run("escaped")
 	_last_event = "ESCAPED — +%d coins, +1 skill point — press E to run again" % reward
+	demo_hud.show_result()
 
 func _perform_melee_attack(weapon_data: WeaponData, position: Vector2, direction: Vector2) -> void:
 	var facing: Vector2 = direction.normalized()
@@ -301,8 +303,17 @@ func _on_monster_killed(monster: Node2D) -> void:
 
 func _on_player_died() -> void:
 	_run_over = true
-	_death_timer = 2.0
-	_last_event = "YOU DIED — resetting run in 2 seconds"
+	_last_event = "YOU DIED — current run lost"
+	demo_hud.show_death()
+
+func _on_run_start_requested() -> void:
+	_run_over = false
+	demo_hud.show_run()
+	_last_event = "Run started — restore power and reach extraction"
+
+func _on_run_restart_requested() -> void:
+	get_tree().paused = false
+	get_tree().reload_current_scene()
 
 func _on_player_parried(_attacker: Node2D) -> void:
 	_last_event = "Perfect parry!"

@@ -11,6 +11,5 @@ func physics_update(delta: float) -> void:
 	monster.tick_patrol_timer(delta)
 	if monster.can_detect_target():
 		transition_requested.emit("Chase", {})
-	elif monster.patrol_timer <= 0.0:
+	elif not monster.data.is_boss and monster.patrol_timer <= 0.0:
 		transition_requested.emit("Patrol", {})
-

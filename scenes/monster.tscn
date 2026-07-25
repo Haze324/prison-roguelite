@@ -8,6 +8,8 @@
 [ext_resource type="Script" uid="uid://doo3cn25810kt" path="res://scripts/entities/monster/states/monster_attack_state.gd" id="6_attack"]
 [ext_resource type="Script" uid="uid://byl8nut6m7bt8" path="res://scripts/entities/monster/states/monster_dead_state.gd" id="7_dead"]
 [ext_resource type="SpriteFrames" uid="uid://d3odnqowgf20m" path="res://resources/animations/monster_sprite_frames.tres" id="8_frames"]
+[ext_resource type="Script" path="res://scripts/entities/monster/states/monster_alert_state.gd" id="9_alert"]
+[ext_resource type="Script" path="res://scripts/entities/monster/states/monster_search_state.gd" id="10_search"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_monster"]
 radius = 9.0
@@ -37,6 +39,12 @@ script = ExtResource("4_patrol")
 
 [node name="Chase" type="Node" parent="StateMachine" unique_id=1772300465]
 script = ExtResource("5_chase")
+
+[node name="Alert" type="Node" parent="StateMachine"]
+script = ExtResource("9_alert")
+
+[node name="Search" type="Node" parent="StateMachine"]
+script = ExtResource("10_search")
 
 [node name="Attack" type="Node" parent="StateMachine" unique_id=1729695402]
 script = ExtResource("6_attack")

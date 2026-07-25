@@ -21,9 +21,51 @@ var armor_maximum: int = 0
 var throwable_summary: String = "-"
 var coins: int = 0
 var skill_points: int = 0
+var inventory_open: bool = false
+var _player: Player
+var screen_phase: String = "MENU"
 
 func _ready() -> void:
+    process_mode = Node.PROCESS_MODE_ALWAYS
     mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _player = get_node_or_null("../../Player") as Player
+    queue_redraw()
+
+func _unhandled_input(event: InputEvent) -> void:
+    if event.is_action_pressed("inventory") and screen_phase == "RUN":
+        inventory_open = not inventory_open
+        get_tree().paused = inventory_open
+        queue_redraw()
+        get_viewport().set_input_as_handled()
+    elif event.is_action_pressed("ui_accept") and screen_phase == "MENU":
+        EventBus.run_start_requested.emit()
+        get_viewport().set_input_as_handled()
+    elif event.is_action_pressed("ui_accept") and (screen_phase == "DEATH" or screen_phase == "RESULT"):
+        EventBus.run_restart_requested.emit()
+        get_viewport().set_input_as_handled()
+
+func show_main_menu() -> void:
+    screen_phase = "MENU"
+    inventory_open = false
+    get_tree().paused = true
+    queue_redraw()
+
+func show_run() -> void:
+    screen_phase = "RUN"
+    inventory_open = false
+    get_tree().paused = false
+    queue_redraw()
+
+func show_death() -> void:
+    screen_phase = "DEATH"
+    inventory_open = false
+    get_tree().paused = true
+    queue_redraw()
+
+func show_result() -> void:
+    screen_phase = "RESULT"
+    inventory_open = false
+    get_tree().paused = true
     queue_redraw()
 
 func set_data(
@@ -124,6 +166,69 @@ func _draw() -> void:
     draw_line(cursor + Vector2(0.0, -10.0), cursor + Vector2(0.0, -3.0), accent, 2.0)
     draw_line(cursor + Vector2(0.0, 3.0), cursor + Vector2(0.0, 10.0), accent, 2.0)
     draw_circle(cursor, 2.0, accent)
+
+    if inventory_open:
+        _draw_inventory(font, accent, warning)
+    elif screen_phase != "RUN":
+        _draw_screen_overlay(font, accent, warning)
+
+func _draw_screen_overlay(font: Font, accent: Color, warning: Color) -> void:
+    var screen: Vector2 = get_viewport_rect().size
+    draw_rect(Rect2(Vector2.ZERO, screen), Color(0.015, 0.02, 0.025, 0.78), true)
+    var panel := Rect2((screen - Vector2(760.0, 520.0)) * 0.5, Vector2(760.0, 520.0))
+    draw_texture_rect(PaperUITheme.BOOK_DESK, panel, false, Color(1.0, 1.0, 1.0, 0.98))
+    draw_texture_rect(PaperUITheme.BANNER_CUTOUT, Rect2(panel.position + Vector2(92.0, 42.0), Vector2(576.0, 176.0) * 0.62), false)
+    var title := "PRISON // RUN 01"
+    var subtitle := "PRESS ENTER TO BEGIN"
+    var body := "Restore power. Stay quiet. Find the Warden."
+    var tint := accent
+    if screen_phase == "DEATH":
+        title = "RUN LOST"
+        subtitle = "PRESS ENTER TO RETURN"
+        body = "Your carried gear is gone. Meta progression remains."
+        tint = Color(0.95, 0.32, 0.36, 1.0)
+    elif screen_phase == "RESULT":
+        title = "EXTRACTION COMPLETE"
+        subtitle = "PRESS ENTER FOR NEXT RUN"
+        body = "Coins and skill points have been added to your safehouse."
+        tint = warning
+    draw_string(font, panel.position + Vector2(205.0, 118.0), title, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 24, Color(0.18, 0.25, 0.25, 1.0))
+    draw_string(font, panel.position + Vector2(220.0, 160.0), subtitle, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, tint)
+    draw_string(font, panel.position + Vector2(155.0, 282.0), body, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 14, Color(0.25, 0.3, 0.3, 1.0))
+    draw_texture_rect(PaperUITheme.BUTTON_NORMAL, Rect2(panel.position + Vector2(280.0, 340.0), Vector2(200.0, 80.0)), false, Color(1.0, 1.0, 1.0, 0.96))
+    draw_string(font, panel.position + Vector2(326.0, 387.0), "ENTER", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 18, Color(0.18, 0.25, 0.25, 1.0))
+
+func _draw_inventory(font: Font, accent: Color, warning: Color) -> void:
+    var screen: Vector2 = get_viewport_rect().size
+    draw_rect(Rect2(Vector2.ZERO, screen), Color(0.015, 0.02, 0.025, 0.72), true)
+    var panel := Rect2((screen - Vector2(760.0, 520.0)) * 0.5, Vector2(760.0, 520.0))
+    draw_texture_rect(PaperUITheme.BOOK_DESK, panel, false, Color(1.0, 1.0, 1.0, 0.98))
+    draw_texture_rect(PaperUITheme.BANNER_PLAIN, Rect2(panel.position + Vector2(92.0, 20.0), Vector2(576.0, 176.0) * 0.62), false)
+    draw_string(font, panel.position + Vector2(220.0, 72.0), "FIELD INVENTORY", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 22, Color(0.18, 0.25, 0.25, 1.0))
+    draw_string(font, panel.position + Vector2(245.0, 98.0), "TAB  CLOSE", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 11, Color(0.3, 0.42, 0.4, 1.0))
+
+    var left := panel.position + Vector2(62.0, 150.0)
+    draw_string(font, left, "EQUIPMENT", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 14, Color(0.18, 0.25, 0.25, 1.0))
+    _draw_inventory_slot(font, left + Vector2(0.0, 20.0), "SLOT 1", _weapon_label(0), accent)
+    _draw_inventory_slot(font, left + Vector2(0.0, 112.0), "SLOT 2", _weapon_label(1), warning)
+
+    var right := panel.position + Vector2(400.0, 150.0)
+    draw_string(font, right, "SUPPLIES", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 14, Color(0.18, 0.25, 0.25, 1.0))
+    _draw_inventory_slot(font, right + Vector2(0.0, 20.0), "MEDKIT", "x%d" % medkits, Color(0.85, 0.3, 0.35, 1.0))
+    _draw_inventory_slot(font, right + Vector2(0.0, 112.0), "THROWABLES", throwable_summary, Color(0.5, 0.35, 0.75, 1.0))
+    draw_string(font, panel.position + Vector2(64.0, 462.0), "COINS  %d     SKILL POINTS  %d" % [coins, skill_points], HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color(0.28, 0.4, 0.38, 1.0))
+
+func _draw_inventory_slot(font: Font, position: Vector2, slot_name: String, value: String, tint: Color) -> void:
+    draw_texture_rect(PaperUITheme.SLOT_HOLDER, Rect2(position, Vector2(72.0, 72.0)), false, Color(1.0, 1.0, 1.0, 0.92))
+    draw_texture_rect(PaperUITheme.ITEM_ICON, Rect2(position + Vector2(28.0, 28.0), Vector2(16.0, 16.0)), false, tint)
+    draw_string(ThemeDB.fallback_font, position + Vector2(84.0, 27.0), slot_name, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, Color(0.22, 0.3, 0.3, 1.0))
+    draw_string(ThemeDB.fallback_font, position + Vector2(84.0, 49.0), value, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, tint)
+
+func _weapon_label(index: int) -> String:
+    if _player == null or index >= _player.weapons.size():
+        return "EMPTY"
+    var weapon: WeaponData = _player.weapons[index]
+    return "%s  %d/%d" % [weapon.weapon_name, _player.current_ammo if index == _player.current_weapon_index else weapon.mag_size, weapon.mag_size]
 
 func _draw_bar(rect: Rect2, ratio: float, fill_color: Color) -> void:
     draw_rect(rect, Color(0.08, 0.1, 0.12, 1.0), true)

@@ -4,12 +4,14 @@ extends Node2D
 @export var map_seed: int = 0
 
 var obstacle_rects: Array[Rect2] = []
+var fixed_power_nodes: Dictionary = {}
 
 func generate(new_seed: int = 0) -> void:
 	map_seed = new_seed if new_seed != 0 else randi()
 	for child in get_children():
 		child.queue_free()
 	obstacle_rects.clear()
+	fixed_power_nodes.clear()
 	var candidates: Array[Rect2] = [
 		Rect2(540.0, 170.0, 180.0, 34.0),
 		Rect2(820.0, 300.0, 36.0, 220.0),
@@ -26,6 +28,10 @@ func generate(new_seed: int = 0) -> void:
 		_add_obstacle(candidate)
 	queue_redraw()
 	EventBus.map_generated.emit(map_seed, 1)
+
+func set_power_node_fixed(index: int) -> void:
+	fixed_power_nodes[index] = true
+	queue_redraw()
 
 func _add_obstacle(rect: Rect2) -> void:
 	obstacle_rects.append(rect)
@@ -60,9 +66,11 @@ func _draw() -> void:
 	for y in range(0, 1081, 48):
 		draw_line(Vector2(0.0, y), Vector2(1680.0, y), grid_color, 1.0)
 	var power_positions: Array[Vector2] = [Vector2(620.0, 170.0), Vector2(1040.0, 760.0), Vector2(1320.0, 360.0)]
-	for power_position in power_positions:
-		draw_circle(power_position, 118.0, Color(0.05, 0.55, 0.52, 0.055))
-		draw_circle(power_position, 62.0, Color(0.12, 0.8, 0.7, 0.045))
+	for index in power_positions.size():
+		var power_position: Vector2 = power_positions[index]
+		var restored: bool = fixed_power_nodes.has(index)
+		draw_circle(power_position, 118.0 if restored else 84.0, Color(0.05, 0.55, 0.52, 0.11 if restored else 0.025))
+		draw_circle(power_position, 62.0, Color(0.12, 0.8, 0.7, 0.09 if restored else 0.02))
 	for rect in obstacle_rects:
 		draw_rect(rect.grow(5.0), Color(0.035, 0.025, 0.035, 1.0), true)
 		draw_rect(rect, Color(0.27, 0.19, 0.23, 1.0), true)
