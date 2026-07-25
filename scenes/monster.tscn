@@ -1,0 +1,37 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/entities/monster/monster.gd" id="1_monster"]
+[ext_resource type="Script" path="res://scripts/core/state_machine.gd" id="2_machine"]
+[ext_resource type="Script" path="res://scripts/entities/monster/states/monster_idle_state.gd" id="3_idle"]
+[ext_resource type="Script" path="res://scripts/entities/monster/states/monster_patrol_state.gd" id="4_patrol"]
+[ext_resource type="Script" path="res://scripts/entities/monster/states/monster_chase_state.gd" id="5_chase"]
+[ext_resource type="Script" path="res://scripts/entities/monster/states/monster_attack_state.gd" id="6_attack"]
+[ext_resource type="Script" path="res://scripts/entities/monster/states/monster_dead_state.gd" id="7_dead"]
+
+[node name="Monster" type="CharacterBody2D"]
+script = ExtResource("1_monster")
+
+[node name="BodySprite" type="AnimatedSprite2D" parent="."]
+position = Vector2(0, -10)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+
+[node name="StateMachine" type="Node" parent="."]
+script = ExtResource("2_machine")
+initial_state = NodePath("Idle")
+
+[node name="Idle" type="Node" parent="StateMachine"]
+script = ExtResource("3_idle")
+
+[node name="Patrol" type="Node" parent="StateMachine"]
+script = ExtResource("4_patrol")
+
+[node name="Chase" type="Node" parent="StateMachine"]
+script = ExtResource("5_chase")
+
+[node name="Attack" type="Node" parent="StateMachine"]
+script = ExtResource("6_attack")
+
+[node name="Dead" type="Node" parent="StateMachine"]
+script = ExtResource("7_dead")
+
