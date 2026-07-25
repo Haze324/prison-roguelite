@@ -16,9 +16,12 @@ var patrol_direction := Vector2.RIGHT
 var patrol_timer := 0.0
 var attack_timer := 0.0
 var death_timer := 0.0
+var attack_hit_applied := false
+var noise_target := Vector2.ZERO
 
 func _ready() -> void:
-	state_machine.state_changed.connect(_on_state_changed)
+    add_to_group("monsters")
+    state_machine.state_changed.connect(_on_state_changed)
 	if data == null:
 		data = MonsterData.new()
 	current_health = data.max_health
@@ -73,6 +76,7 @@ func chase_target() -> void:
 
 func begin_attack() -> void:
 	attack_timer = data.attack_duration
+	attack_hit_applied = false
 	velocity = Vector2.ZERO
 	play_animation("attack")
 	if is_instance_valid(target):
@@ -80,14 +84,23 @@ func begin_attack() -> void:
 
 func advance_attack(delta: float) -> bool:
 	attack_timer = maxf(attack_timer - delta, 0.0)
+	if not attack_hit_applied and attack_timer <= data.attack_duration * 0.45:
+		attack_hit_applied = true
+		perform_attack()
 	return attack_timer <= 0.0
+
+func perform_attack() -> void:
+	if not is_instance_valid(target) or global_position.distance_to(target.global_position) > data.attack_range + 12.0:
+		return
+	if target.has_method("take_damage"):
+		target.take_damage(12.0, self)
 
 func advance_death(delta: float) -> bool:
 	death_timer += delta
 	return death_timer >= 0.7
 
 func take_damage(amount: float) -> void:
-	if state_machine.current_state == $StateMachine/Dead:
+	if state_machine.current_state == $StateMachine/Dead or current_health <= 0.0:
 		return
 	current_health = maxf(current_health - amount, 0.0)
 	health_changed.emit(current_health, data.max_health)
@@ -96,7 +109,18 @@ func take_damage(amount: float) -> void:
 	else:
 		play_animation("hurt")
 
+func hear_noise(source_position: Vector2, amount: int) -> void:
+	if current_health <= 0.0 or not is_instance_valid(target) or amount <= 0:
+		return
+	if global_position.distance_to(source_position) > data.vision_range * 1.5:
+		return
+	noise_target = source_position
+	patrol_direction = global_position.direction_to(source_position)
+	patrol_timer = 2.5
+	EventBus.monster_alerted.emit(self, source_position)
+	if state_machine.current_state != $StateMachine/Dead and not can_detect_target():
+		state_machine.transition_to("Patrol")
+
 func _on_state_changed(previous_state: String, next_state: String) -> void:
 	state_changed.emit(previous_state, next_state)
 	EventBus.monster_state_changed.emit(self, previous_state, next_state)
-

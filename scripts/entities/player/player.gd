@@ -3,9 +3,23 @@ extends CharacterBody2D
 
 signal state_changed(previous_state: String, next_state: String)
 signal health_changed(current: float, maximum: float)
+signal died
+signal ammo_changed(current: int, capacity: int)
 
 @export var config: PlayerConfig
 @export var weapons: Array[WeaponData] = []
+
+var max_health: float = 100.0
+var current_health: float = 100.0
+var armor_reduction: float = 0.15
+var medkits: int = 3
+var is_dead: bool = false
+var is_reloading: bool = false
+var current_ammo: int = 0
+var _reload_remaining: float = 0.0
+var _parry_remaining: float = 0.0
+var _parry_cooldown_remaining: float = 0.0
+var _damage_invulnerability: float = 0.0
 
 @onready var body_sprite: AnimatedSprite2D = $BodySprite
 @onready var shadow: Sprite2D = $Shadow
@@ -22,6 +36,7 @@ var _dash_requested := false
 var _shoot_cooldown_remaining := 0.0
 
 func _ready() -> void:
+	state_machine.state_changed.connect(_on_state_machine_changed)
 	if config == null:
 		config = PlayerConfig.new()
 	var capsule := CapsuleShape2D.new()
@@ -38,9 +53,28 @@ func _ready() -> void:
 		equip_weapon(0)
 	state_machine.start()
 
+func _on_state_machine_changed(previous_state: String, next_state: String) -> void:
+	state_changed.emit(previous_state, next_state)
+	EventBus.player_state_changed.emit(previous_state, next_state)
+
 func _physics_process(delta: float) -> void:
+	if is_dead:
+		return
 	_dash_cooldown_remaining = maxf(_dash_cooldown_remaining - delta, 0.0)
 	_shoot_cooldown_remaining = maxf(_shoot_cooldown_remaining - delta, 0.0)
+	_parry_remaining = maxf(_parry_remaining - delta, 0.0)
+	_parry_cooldown_remaining = maxf(_parry_cooldown_remaining - delta, 0.0)
+	_damage_invulnerability = maxf(_damage_invulnerability - delta, 0.0)
+	if is_reloading:
+		_reload_remaining = maxf(_reload_remaining - delta, 0.0)
+		if _reload_remaining <= 0.0:
+			_finish_reload()
+	if Input.is_action_just_pressed("reload"):
+		reload_weapon()
+	if Input.is_action_just_pressed("parry"):
+		start_parry()
+	if Input.is_action_just_pressed("use_heal"):
+		use_medkit()
 	if Input.is_action_just_pressed("dash"):
 		_dash_requested = true
 	state_machine.physics_update(delta)
@@ -98,9 +132,15 @@ func update_aim() -> void:
 	body_sprite.flip_h = aim.x < 0.0
 
 func shoot() -> void:
-	if weapons.is_empty() or _shoot_cooldown_remaining > 0.0:
+	if weapons.is_empty() or _shoot_cooldown_remaining > 0.0 or is_reloading:
 		return
 	var weapon := weapons[current_weapon_index]
+	if weapon.mag_size > 0 and current_ammo <= 0:
+		reload_weapon()
+		return
+	if weapon.mag_size > 0:
+		current_ammo -= 1
+		ammo_changed.emit(current_ammo, weapon.mag_size)
 	_shoot_cooldown_remaining = weapon.fire_rate
 	var direction := (get_global_mouse_position() - weapon_pivot.global_position).normalized()
 	EventBus.shot_fired.emit(weapon, weapon_pivot.global_position, direction)
@@ -110,7 +150,11 @@ func equip_weapon(index: int) -> void:
 		return
 	current_weapon_index = clampi(index, 0, weapons.size() - 1)
 	var weapon := weapons[current_weapon_index]
+	is_reloading = false
+	_reload_remaining = 0.0
+	current_ammo = weapon.mag_size
 	weapon_sprite.texture = weapon.icon
+	ammo_changed.emit(current_ammo, weapon.mag_size)
 	EventBus.weapon_switched.emit(current_weapon_index, weapon)
 
 func _check_weapon_input() -> void:
@@ -123,3 +167,73 @@ func _check_weapon_input() -> void:
 	elif Input.is_action_just_pressed("weapon_prev"):
 		equip_weapon((current_weapon_index - 1 + weapons.size()) % weapons.size())
 
+func reload_weapon() -> void:
+	if weapons.is_empty() or is_reloading:
+		return
+	var weapon := weapons[current_weapon_index]
+	if weapon.mag_size <= 0 or current_ammo >= weapon.mag_size:
+		return
+	is_reloading = true
+	_reload_remaining = weapon.reload_time
+	EventBus.noise_emitted.emit(10, global_position, self)
+
+func _finish_reload() -> void:
+	is_reloading = false
+	if weapons.is_empty():
+		return
+	current_ammo = weapons[current_weapon_index].mag_size
+	ammo_changed.emit(current_ammo, weapons[current_weapon_index].mag_size)
+
+func start_parry() -> void:
+	if _parry_cooldown_remaining > 0.0 or is_reloading:
+		return
+	_parry_remaining = 0.2
+	_parry_cooldown_remaining = 0.5
+	EventBus.player_state_changed.emit("Combat", "Parry")
+
+func is_parrying() -> bool:
+	return _parry_remaining > 0.0
+
+func resolve_parry(attacker: Node2D) -> bool:
+	if not is_parrying():
+		return false
+	_parry_remaining = 0.0
+	_damage_invulnerability = 0.2
+	EventBus.player_parried.emit(attacker)
+	return true
+
+func take_damage(amount: float, attacker: Node2D = null) -> void:
+	if is_dead or _damage_invulnerability > 0.0:
+		return
+	if attacker != null and resolve_parry(attacker):
+		return
+	_damage_invulnerability = 0.35
+	current_health = maxf(current_health - amount * (1.0 - armor_reduction), 0.0)
+	health_changed.emit(current_health, max_health)
+	EventBus.player_health_changed.emit(current_health, max_health)
+	if current_health <= 0.0:
+		is_dead = true
+		velocity = Vector2.ZERO
+		play_body_animation("death")
+		died.emit()
+		EventBus.player_died.emit()
+
+func use_medkit() -> bool:
+	if medkits <= 0 or is_dead or current_health >= max_health:
+		return false
+	medkits -= 1
+	current_health = minf(current_health + 35.0, max_health)
+	health_changed.emit(current_health, max_health)
+	EventBus.player_health_changed.emit(current_health, max_health)
+	EventBus.consumable_used.emit("Medkit")
+	return true
+
+func restore_at_safehouse() -> void:
+	current_health = max_health
+	medkits = 3
+	if not weapons.is_empty():
+		current_ammo = weapons[current_weapon_index].mag_size
+	health_changed.emit(current_health, max_health)
+	ammo_changed.emit(current_ammo, weapons[current_weapon_index].mag_size if not weapons.is_empty() else 0)
+	EventBus.player_health_changed.emit(current_health, max_health)
+	EventBus.consumable_used.emit("Safehouse resupply")

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="MonsterData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/monster_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+monster_name = "Warden Abomination"
+max_health = 180.0
+move_speed = 82.0
+vision_range = 720.0
+attack_range = 72.0
+attack_duration = 0.9
+animation_prefix = "demon"
+animation_base_path = "res://assets/runtime/monsters/"
+sprite_scale = 2.4

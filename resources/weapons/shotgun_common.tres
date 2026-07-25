@@ -8,7 +8,10 @@ script = ExtResource("1_weapon")
 weapon_name = "Shotgun"
 icon = ExtResource("2_icon")
 damage = 6.0
+mag_size = 6
+reload_time = 3.0
+pellets = 5
 fire_rate = 0.7
 noise = 55
 spread = 25.0
-
+projectile_speed = 850.0
