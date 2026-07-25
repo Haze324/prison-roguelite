@@ -3,6 +3,11 @@ extends Node2D
 const MONSTER_SCENE: PackedScene = preload("res://scenes/monster.tscn")
 const BOSS_DATA: MonsterData = preload("res://resources/monsters/boss_grunt.tres")
 const DAMAGE_POPUP_SCRIPT: Script = preload("res://scripts/entities/damage_popup.gd")
+const MEDKIT_DATA: ConsumableData = preload("res://resources/config/consumable_medkit.tres")
+const FLARE_DATA: ConsumableData = preload("res://resources/consumables/throwable_flare.tres")
+const SMOKE_DATA: ConsumableData = preload("res://resources/consumables/throwable_smoke.tres")
+const GRENADE_DATA: ConsumableData = preload("res://resources/consumables/throwable_grenade.tres")
+const MINE_DATA: ConsumableData = preload("res://resources/consumables/throwable_mine.tres")
 
 @onready var player: Player = $Player
 @onready var demon: Monster = $DemonGrunt
@@ -57,10 +62,14 @@ func _ready() -> void:
 	EventBus.run_start_requested.connect(_on_run_start_requested)
 	EventBus.run_restart_requested.connect(_on_run_restart_requested)
 	map_generator.generate()
-	_spawn_pickup(Vector2(330.0, 480.0), "Medkit", 1, Color(0.85, 0.25, 0.3, 1.0))
+	_spawn_data_pickup(Vector2(330.0, 480.0), MEDKIT_DATA, 1, Color(0.85, 0.25, 0.3, 1.0))
 	_spawn_pickup(Vector2(760.0, 650.0), "Ammo", 1, Color(0.3, 0.7, 0.9, 1.0))
-	_spawn_pickup(Vector2(1180.0, 330.0), "Medkit", 1, Color(0.85, 0.25, 0.3, 1.0))
+	_spawn_data_pickup(Vector2(1180.0, 330.0), MEDKIT_DATA, 1, Color(0.85, 0.25, 0.3, 1.0))
 	_spawn_pickup(Vector2(1220.0, 700.0), "Shotgun", 1, Color(0.92, 0.62, 0.25, 1.0))
+	_spawn_data_pickup(Vector2(500.0, 760.0), FLARE_DATA, 1, Color(1.0, 0.78, 0.28, 1.0))
+	_spawn_data_pickup(Vector2(900.0, 260.0), SMOKE_DATA, 1, Color(0.65, 0.7, 0.78, 1.0))
+	_spawn_data_pickup(Vector2(1260.0, 520.0), GRENADE_DATA, 1, Color(0.95, 0.3, 0.2, 1.0))
+	_spawn_data_pickup(Vector2(1440.0, 740.0), MINE_DATA, 1, Color(0.75, 0.25, 0.85, 1.0))
 	_spawn_power_nodes()
 	_exit_gate = ExitGate.new()
 	add_child(_exit_gate)
@@ -283,6 +292,12 @@ func _spawn_pickup(position: Vector2, item_name: String, amount: int, tint: Colo
 	add_child(pickup)
 	pickup.position = position
 	pickup.setup(item_name, amount, tint, player)
+
+func _spawn_data_pickup(position: Vector2, data: ConsumableData, amount: int, tint: Color) -> void:
+	var pickup: Pickup = Pickup.new()
+	add_child(pickup)
+	pickup.position = position
+	pickup.setup_data(data, amount, tint, player)
 
 func _collect_nearby_pickups() -> void:
 	for node in get_tree().get_nodes_in_group("pickups"):

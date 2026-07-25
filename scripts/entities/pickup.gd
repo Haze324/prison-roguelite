@@ -6,9 +6,20 @@ var amount: int = 1
 var tint: Color = Color(0.35, 0.75, 0.85, 1.0)
 var pulse_time: float = 0.0
 var player: Player
+var item_data: ConsumableData
 
 func setup(pickup_name: String, pickup_amount: int, pickup_tint: Color, target_player: Player = null) -> void:
     item_name = pickup_name
+    amount = pickup_amount
+    tint = pickup_tint
+    player = target_player
+    item_data = null
+    add_to_group("pickups")
+    queue_redraw()
+
+func setup_data(data: ConsumableData, pickup_amount: int, pickup_tint: Color, target_player: Player = null) -> void:
+    item_data = data
+    item_name = data.item_name if data != null else "Unknown"
     amount = pickup_amount
     tint = pickup_tint
     player = target_player
@@ -19,17 +30,24 @@ func _process(delta: float) -> void:
     pulse_time += delta
     queue_redraw()
 
-func collect(player: Player) -> void:
-    if item_name == "Medkit":
-        player.medkits = mini(player.medkits + amount, 5)
+func collect(target_player: Player) -> void:
+    if item_data != null:
+        if item_data.item_type == GameEnums.ConsumableType.HEALING:
+            target_player.medkits = mini(target_player.medkits + amount, item_data.max_carry)
+        elif item_data.item_type == GameEnums.ConsumableType.THROWABLE:
+            target_player.add_throwable(item_data.throwable_type, amount, item_data.max_carry)
+        elif item_data.item_type == GameEnums.ConsumableType.AMMO:
+            target_player.refill_ammo()
+    elif item_name == "Medkit":
+        target_player.medkits = mini(target_player.medkits + amount, 5)
     elif item_name == "Ammo":
-        player.refill_ammo()
+        target_player.refill_ammo()
     elif item_name == "Shotgun":
         var shotgun: WeaponData = load("res://resources/weapons/shotgun_common.tres") as WeaponData
-        if shotgun != null and player.weapons.size() >= 2:
-            player.weapons[1] = shotgun
-            player.register_weapon(shotgun)
-            player.equip_weapon(1)
+        if shotgun != null and target_player.weapons.size() >= 2:
+            target_player.weapons[1] = shotgun
+            target_player.register_weapon(shotgun)
+            target_player.equip_weapon(1)
     EventBus.consumable_used.emit(item_name + " +%d" % amount)
     queue_free()
 

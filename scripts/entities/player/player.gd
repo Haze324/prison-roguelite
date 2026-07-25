@@ -346,6 +346,23 @@ func use_throwable(throwable_type: int, inventory_key: String) -> bool:
 	EventBus.consumable_changed.emit(inventory_key, count - 1, 1)
 	return true
 
+func add_throwable(throwable_type: int, amount: int, maximum: int) -> void:
+	var inventory_key: String = throwable_key_for_type(throwable_type)
+	var current: int = int(throwable_counts.get(inventory_key, 0))
+	throwable_counts[inventory_key] = mini(current + amount, maximum)
+	EventBus.consumable_changed.emit(inventory_key, int(throwable_counts[inventory_key]), maximum)
+
+func throwable_key_for_type(throwable_type: int) -> String:
+	match throwable_type:
+		GameEnums.ThrowableType.FLARE:
+			return "flare"
+		GameEnums.ThrowableType.SMOKE:
+			return "smoke"
+		GameEnums.ThrowableType.GRENADE:
+			return "grenade"
+		_:
+			return "mine"
+
 func use_quick_slot(slot_index: int) -> bool:
 	if slot_index < 0 or slot_index >= quick_slot_items.size():
 		return false
