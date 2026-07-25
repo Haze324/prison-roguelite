@@ -1,0 +1,125 @@
+class_name Player
+extends CharacterBody2D
+
+signal state_changed(previous_state: String, next_state: String)
+signal health_changed(current: float, maximum: float)
+
+@export var config: PlayerConfig
+@export var weapons: Array[WeaponData] = []
+
+@onready var body_sprite: AnimatedSprite2D = $BodySprite
+@onready var shadow: Sprite2D = $Shadow
+@onready var weapon_pivot: Node2D = $WeaponPivot
+@onready var weapon_sprite: Sprite2D = $WeaponPivot/WeaponSprite
+@onready var collision_shape: CollisionShape2D = $CollisionShape2D
+@onready var state_machine: StateMachine = $StateMachine
+
+var current_weapon_index := 0
+var _dash_direction := Vector2.RIGHT
+var _dash_remaining := 0.0
+var _dash_cooldown_remaining := 0.0
+var _dash_requested := false
+var _shoot_cooldown_remaining := 0.0
+
+func _ready() -> void:
+	if config == null:
+		config = PlayerConfig.new()
+	var capsule := CapsuleShape2D.new()
+	capsule.radius = config.collision_radius
+	capsule.height = config.collision_radius * 2.0
+	collision_shape.shape = capsule
+	body_sprite.scale = Vector2.ONE * config.body_scale
+	shadow.texture = load("res://assets/runtime/character/shadow.png")
+	body_sprite.sprite_frames = SpriteFramesFactory.build_player_frames("res://assets/runtime/character/")
+	play_body_animation("idle")
+	if weapons.is_empty():
+		push_warning("Player 没有配置武器资源")
+	else:
+		equip_weapon(0)
+	state_machine.start()
+
+func _physics_process(delta: float) -> void:
+	_dash_cooldown_remaining = maxf(_dash_cooldown_remaining - delta, 0.0)
+	_shoot_cooldown_remaining = maxf(_shoot_cooldown_remaining - delta, 0.0)
+	if Input.is_action_just_pressed("dash"):
+		_dash_requested = true
+	state_machine.physics_update(delta)
+	update_aim()
+	if Input.is_action_pressed("shoot"):
+		shoot()
+	_check_weapon_input()
+
+func get_move_direction() -> Vector2:
+	return Input.get_vector("move_left", "move_right", "move_up", "move_down").normalized()
+
+func apply_normal_movement(direction: Vector2, _delta: float) -> void:
+	velocity = direction * config.move_speed
+	move_and_slide()
+
+func consume_dash_request() -> bool:
+	if not _dash_requested or _dash_cooldown_remaining > 0.0:
+		return false
+	_dash_requested = false
+	return true
+
+func begin_dash() -> void:
+	_dash_direction = get_move_direction()
+	if _dash_direction == Vector2.ZERO:
+		_dash_direction = (get_global_mouse_position() - global_position).normalized()
+	if _dash_direction == Vector2.ZERO:
+		_dash_direction = Vector2.RIGHT
+	_dash_remaining = config.dash_duration
+	_dash_cooldown_remaining = config.dash_cooldown
+	EventBus.dash_started.emit(global_position, _dash_direction)
+
+func apply_dash_movement(delta: float) -> bool:
+	_dash_remaining -= delta
+	velocity = _dash_direction * config.dash_speed
+	move_and_slide()
+	return _dash_remaining <= 0.0
+
+func play_body_animation(animation_name: String) -> void:
+	if body_sprite.sprite_frames.has_animation(animation_name) and body_sprite.animation != animation_name:
+		body_sprite.play(animation_name)
+
+func update_combat_facing() -> void:
+	var direction := get_global_mouse_position() - global_position
+	if direction.x == 0.0:
+		direction.x = 1.0 if not body_sprite.flip_h else -1.0
+	body_sprite.flip_h = direction.x < 0.0
+
+func update_aim() -> void:
+	var aim := get_global_mouse_position() - global_position
+	if aim == Vector2.ZERO:
+		return
+	weapon_pivot.position = Vector2(config.hand_offset.x * (1.0 if aim.x >= 0.0 else -1.0), config.hand_offset.y)
+	weapon_pivot.rotation = aim.angle()
+	weapon_sprite.flip_v = aim.x < 0.0
+	body_sprite.flip_h = aim.x < 0.0
+
+func shoot() -> void:
+	if weapons.is_empty() or _shoot_cooldown_remaining > 0.0:
+		return
+	var weapon := weapons[current_weapon_index]
+	_shoot_cooldown_remaining = weapon.fire_rate
+	var direction := (get_global_mouse_position() - weapon_pivot.global_position).normalized()
+	EventBus.shot_fired.emit(weapon, weapon_pivot.global_position, direction)
+
+func equip_weapon(index: int) -> void:
+	if weapons.is_empty():
+		return
+	current_weapon_index = clampi(index, 0, weapons.size() - 1)
+	var weapon := weapons[current_weapon_index]
+	weapon_sprite.texture = weapon.icon
+	EventBus.weapon_switched.emit(current_weapon_index, weapon)
+
+func _check_weapon_input() -> void:
+	if Input.is_action_just_pressed("weapon_1"):
+		equip_weapon(0)
+	elif Input.is_action_just_pressed("weapon_2"):
+		equip_weapon(1)
+	elif Input.is_action_just_pressed("weapon_next"):
+		equip_weapon((current_weapon_index + 1) % weapons.size())
+	elif Input.is_action_just_pressed("weapon_prev"):
+		equip_weapon((current_weapon_index - 1 + weapons.size()) % weapons.size())
+

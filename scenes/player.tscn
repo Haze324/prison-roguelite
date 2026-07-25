@@ -1,0 +1,45 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/entities/player/player.gd" id="1_player"]
+[ext_resource type="Script" path="res://scripts/core/state_machine.gd" id="2_machine"]
+[ext_resource type="Script" path="res://scripts/entities/player/states/player_idle_state.gd" id="3_idle"]
+[ext_resource type="Script" path="res://scripts/entities/player/states/player_move_state.gd" id="4_move"]
+[ext_resource type="Script" path="res://scripts/entities/player/states/player_dash_state.gd" id="5_dash"]
+[ext_resource type="Resource" path="res://resources/config/player_config.tres" id="6_config"]
+[ext_resource type="Resource" path="res://resources/weapons/pistol_common.tres" id="7_pistol"]
+[ext_resource type="Resource" path="res://resources/weapons/shotgun_common.tres" id="8_shotgun"]
+
+[node name="Player" type="CharacterBody2D"]
+script = ExtResource("1_player")
+config = ExtResource("6_config")
+weapons = [ExtResource("7_pistol"), ExtResource("8_shotgun")]
+
+[node name="Shadow" type="Sprite2D" parent="."]
+position = Vector2(0, 25)
+modulate = Color(0, 0, 0, 0.45)
+scale = Vector2(1.5, 0.55)
+
+[node name="BodySprite" type="AnimatedSprite2D" parent="."]
+position = Vector2(0, -10)
+
+[node name="WeaponPivot" type="Node2D" parent="."]
+position = Vector2(18, -8)
+
+[node name="WeaponSprite" type="Sprite2D" parent="WeaponPivot"]
+position = Vector2(7, 0)
+scale = Vector2(3, 3)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+
+[node name="StateMachine" type="Node" parent="."]
+script = ExtResource("2_machine")
+initial_state = NodePath("Idle")
+
+[node name="Idle" type="Node" parent="StateMachine"]
+script = ExtResource("3_idle")
+
+[node name="Move" type="Node" parent="StateMachine"]
+script = ExtResource("4_move")
+
+[node name="Dash" type="Node" parent="StateMachine"]
+script = ExtResource("5_dash")

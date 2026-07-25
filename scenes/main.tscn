@@ -1,0 +1,99 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="2_player"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
+size = Vector2(2400, 40)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_v"]
+size = Vector2(40, 1600)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.03, 0.025, 0.04, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.35, 0.22, 0.28, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_main")
+
+[node name="Background" type="ColorRect" parent="."]
+offset_left = -600.0
+offset_top = -400.0
+offset_right = 1800.0
+offset_bottom = 1200.0
+mouse_filter = 2
+color = Color(0.08, 0.065, 0.1, 1)
+
+[node name="Arena" type="ColorRect" parent="."]
+offset_left = -480.0
+offset_top = -280.0
+offset_right = 1680.0
+offset_bottom = 1080.0
+mouse_filter = 2
+color = Color(0.15, 0.11, 0.13, 1)
+
+[node name="NorthWall" type="StaticBody2D" parent="."]
+position = Vector2(600, -300)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NorthWall"]
+shape = SubResource("RectangleShape2D_wall_h")
+
+[node name="SouthWall" type="StaticBody2D" parent="."]
+position = Vector2(600, 1100)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SouthWall"]
+shape = SubResource("RectangleShape2D_wall_h")
+
+[node name="WestWall" type="StaticBody2D" parent="."]
+position = Vector2(-600, 400)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WestWall"]
+shape = SubResource("RectangleShape2D_wall_v")
+
+[node name="EastWall" type="StaticBody2D" parent="."]
+position = Vector2(1800, 400)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="EastWall"]
+shape = SubResource("RectangleShape2D_wall_v")
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+position = Vector2(400, 350)
+
+[node name="Camera2D" type="Camera2D" parent="Player"]
+position = Vector2(0, 0)
+position_smoothing_enabled = true
+position_smoothing_speed = 8.0
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="Panel" type="PanelContainer" parent="HUD"]
+offset_left = 18.0
+offset_top = 18.0
+offset_right = 330.0
+offset_bottom = 240.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="Status" type="Label" parent="HUD"]
+offset_left = 32.0
+offset_top = 32.0
+offset_right = 316.0
+offset_bottom = 210.0
+theme_override_colors/font_color = Color(0.9, 0.82, 0.78, 1)
+text = "初始化中"
+
+[node name="Event" type="Label" parent="HUD"]
+offset_left = 18.0
+offset_top = 680.0
+offset_right = 900.0
+offset_bottom = 710.0
+theme_override_colors/font_color = Color(0.8, 0.65, 0.45, 1)
+text = "最近事件：等待输入"
+
