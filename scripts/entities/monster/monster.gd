@@ -84,6 +84,9 @@ func advance_patrol(delta: float) -> bool:
 func chase_target() -> void:
 	if not is_instance_valid(target):
 		return
+	if target.has_method("is_protected_by_safehouse") and target.is_protected_by_safehouse():
+		velocity = Vector2.ZERO
+		return
 	var direction := global_position.direction_to(target.global_position)
 	velocity = direction * data.move_speed
 	move_and_slide()
@@ -107,6 +110,8 @@ func advance_attack(delta: float) -> bool:
 
 func perform_attack() -> void:
 	if not is_instance_valid(target) or global_position.distance_to(target.global_position) > data.attack_range + 12.0:
+		return
+	if target.has_method("is_protected_by_safehouse") and target.is_protected_by_safehouse():
 		return
 	if target.has_method("take_damage"):
 		target.take_damage(data.attack_damage, self)

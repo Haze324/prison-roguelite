@@ -43,6 +43,7 @@ var _dash_remaining := 0.0
 var _dash_cooldown_remaining := 0.0
 var _dash_requested := false
 var _shoot_cooldown_remaining := 0.0
+var flashlight_on: bool = true
 
 func _ready() -> void:
 	state_machine.state_changed.connect(_on_state_machine_changed)
@@ -89,6 +90,10 @@ func _physics_process(delta: float) -> void:
 		reload_weapon()
 	if Input.is_action_just_pressed("parry"):
 		start_parry()
+	if Input.is_action_just_pressed("flashlight"):
+		flashlight_on = not flashlight_on
+		EventBus.noise_emitted.emit(2, global_position, self)
+		queue_redraw()
 	if Input.is_action_just_pressed("use_heal"):
 		use_medkit()
 	if Input.is_action_just_pressed("throw_flare"):
@@ -290,3 +295,22 @@ func use_throwable(throwable_type: int, inventory_key: String) -> bool:
 	EventBus.throwable_thrown.emit(throwable_type, global_position + direction * 72.0, direction, self)
 	EventBus.consumable_changed.emit(inventory_key, count - 1, 1)
 	return true
+
+func is_protected_by_safehouse() -> bool:
+	for node in get_tree().get_nodes_in_group("safehouses"):
+		var safehouse: SafehouseMarker = node as SafehouseMarker
+		if safehouse != null and safehouse.contains_point(global_position):
+			return true
+	return false
+
+func _draw() -> void:
+	if not flashlight_on or weapon_pivot == null:
+		return
+	var direction: Vector2 = Vector2.RIGHT.rotated(weapon_pivot.rotation)
+	var points := PackedVector2Array([
+		Vector2.ZERO,
+		direction.rotated(-0.32) * 210.0,
+		direction.rotated(0.32) * 210.0,
+	])
+	draw_colored_polygon(points, Color(1.0, 0.9, 0.62, 0.06))
+	draw_arc(Vector2.ZERO, 210.0, direction.angle() - 0.32, direction.angle() + 0.32, 18, Color(1.0, 0.9, 0.62, 0.22), 1.5)
