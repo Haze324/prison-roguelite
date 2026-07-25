@@ -51,7 +51,7 @@ func _ready() -> void:
 	state_machine.state_changed.connect(_on_state_machine_changed)
 	if config == null:
 		config = PlayerConfig.new()
-	max_health = config.max_health
+	max_health = config.max_health + (20.0 if has_skill("Iron Will") else 0.0)
 	current_health = max_health
 	if armor != null:
 		armor.repair()
@@ -127,6 +127,8 @@ func apply_normal_movement(direction: Vector2, _delta: float) -> void:
 	move_and_slide()
 	if direction != Vector2.ZERO and _movement_noise_timer <= 0.0:
 		var movement_noise: int = config.run_noise if running else config.walk_noise
+		if has_skill("Silent Step"):
+			movement_noise = maxi(movement_noise - 1, 0)
 		EventBus.noise_emitted.emit(movement_noise, global_position, self)
 		_movement_noise_timer = 0.35 if running else 0.55
 
@@ -217,7 +219,7 @@ func reload_weapon() -> void:
 	if weapon.mag_size <= 0 or current_ammo >= weapon.mag_size or reserve <= 0:
 		return
 	is_reloading = true
-	_reload_remaining = weapon.reload_time
+	_reload_remaining = weapon.reload_time * (0.75 if has_skill("Quick Hands") else 1.0)
 	EventBus.noise_emitted.emit(10, global_position, self)
 
 func _finish_reload() -> void:
@@ -279,7 +281,8 @@ func use_medkit() -> bool:
 	if medkits <= 0 or is_dead or current_health >= max_health:
 		return false
 	medkits -= 1
-	current_health = minf(current_health + 35.0, max_health)
+	var heal_amount: float = 50.0 if has_skill("Field Medic") else 35.0
+	current_health = minf(current_health + heal_amount, max_health)
 	health_changed.emit(current_health, max_health)
 	EventBus.player_health_changed.emit(current_health, max_health)
 	EventBus.consumable_used.emit("Medkit")
@@ -324,6 +327,9 @@ func get_current_reserve_ammo() -> int:
 
 func _weapon_key(weapon: WeaponData) -> int:
 	return weapon.get_instance_id()
+
+func has_skill(skill_name: String) -> bool:
+	return MetaProgression.unlocked_skills.has(skill_name)
 
 func use_throwable(throwable_type: int, inventory_key: String) -> bool:
 	var count: int = int(throwable_counts.get(inventory_key, 0))
