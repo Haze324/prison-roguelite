@@ -6,7 +6,7 @@ export_presets.cfg
 
 # Godot autoload cache
 *.uid
-*.godot
+# Keep the root project.godot file tracked; only Godot's cache directory is ignored.
 
 # C#
 .mono/
