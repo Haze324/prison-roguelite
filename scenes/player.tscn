@@ -8,7 +8,6 @@
 [ext_resource type="Script" uid="uid://cvyscd0kjq8lt" path="res://scripts/entities/player/states/player_dash_state.gd" id="5_dash"]
 [ext_resource type="Resource" uid="uid://cwsqvasjdiw36" path="res://resources/config/player_config.tres" id="6_config"]
 [ext_resource type="Resource" path="res://resources/weapons/pistol_common.tres" id="7_pistol"]
-[ext_resource type="Resource" path="res://resources/weapons/shotgun_common.tres" id="8_shotgun"]
 [ext_resource type="SpriteFrames" uid="uid://dt80vj6bjjaha" path="res://resources/animations/player_sprite_frames.tres" id="9_frames"]
 [ext_resource type="Texture2D" uid="uid://c5xaof26f2u7d" path="res://assets/runtime/weapons/pistol.png" id="10_pistol_visual"]
 [ext_resource type="Resource" path="res://resources/config/armor_cloth_vest.tres" id="11_armor"]
@@ -21,7 +20,7 @@ height = 24.0
 [node name="Player" type="CharacterBody2D" unique_id=1540385695]
 script = ExtResource("1_player")
 config = ExtResource("6_config")
-weapons = Array[ExtResource("3_d2wvv")]([ExtResource("7_pistol"), ExtResource("8_shotgun"), ExtResource("12_crowbar")])
+weapons = Array[ExtResource("3_d2wvv")]([ExtResource("12_crowbar"), ExtResource("7_pistol")])
 armor = ExtResource("11_armor")
 
 [node name="Shadow" type="Sprite2D" parent="." unique_id=1745084024]

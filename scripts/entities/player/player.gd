@@ -193,8 +193,6 @@ func _check_weapon_input() -> void:
 		equip_weapon(0)
 	elif Input.is_action_just_pressed("weapon_2"):
 		equip_weapon(1)
-	elif Input.is_action_just_pressed("weapon_3"):
-		equip_weapon(2)
 	elif Input.is_action_just_pressed("weapon_next"):
 		equip_weapon((current_weapon_index + 1) % weapons.size())
 	elif Input.is_action_just_pressed("weapon_prev"):

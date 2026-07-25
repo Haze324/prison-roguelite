@@ -54,6 +54,7 @@ func _ready() -> void:
 	_spawn_pickup(Vector2(330.0, 480.0), "Medkit", 1, Color(0.85, 0.25, 0.3, 1.0))
 	_spawn_pickup(Vector2(760.0, 650.0), "Ammo", 1, Color(0.3, 0.7, 0.9, 1.0))
 	_spawn_pickup(Vector2(1180.0, 330.0), "Medkit", 1, Color(0.85, 0.25, 0.3, 1.0))
+	_spawn_pickup(Vector2(1220.0, 700.0), "Shotgun", 1, Color(0.92, 0.62, 0.25, 1.0))
 	_spawn_power_nodes()
 	_exit_gate = ExitGate.new()
 	add_child(_exit_gate)

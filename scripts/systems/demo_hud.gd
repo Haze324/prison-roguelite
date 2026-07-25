@@ -114,7 +114,7 @@ func _draw() -> void:
     draw_rect(event_rect, Color(0.34, 0.48, 0.52, 0.9), false, 1.0)
     draw_string(font, event_rect.position + Vector2(12.0, 20.0), "> " + event_text, HORIZONTAL_ALIGNMENT_LEFT, event_rect.size.x - 24.0, 13, Color(0.88, 0.9, 0.82, 1.0))
 
-    var controls := "WASD MOVE   SHIFT RUN   SPACE DASH   LMB FIRE   R RELOAD   RMB AIM/PARRY   Q HEAL   E INTERACT"
+    var controls := "WASD MOVE   SHIFT RUN   SPACE DASH   LMB FIRE   1/2 WEAPON   R RELOAD   RMB AIM/PARRY   Q HEAL   E INTERACT"
     draw_string(font, Vector2(18.0, screen.y - 12.0), controls, HORIZONTAL_ALIGNMENT_LEFT, screen.x - 36.0, 11, Color(0.65, 0.72, 0.74, 1.0))
 
     var cursor: Vector2 = get_viewport().get_mouse_position()
