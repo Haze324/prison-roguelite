@@ -12,8 +12,8 @@ func _ready() -> void:
 		if child is GameState:
 			_states[child.name] = child
 			child.transition_requested.connect(_on_transition_requested)
-	if initial_state != NodePath():
-		start()
+	# 不在子节点 _ready() 中自动启动。父实体必须先完成自己的 @onready 初始化，
+	# 再显式调用 start()，避免状态 enter() 提前访问父实体的空引用。
 
 func start() -> void:
 	if current_state != null:
