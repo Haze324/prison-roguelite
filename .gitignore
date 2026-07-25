@@ -1,0 +1,31 @@
+# Godot 4
+.godot/
+*.import
+*.translation
+export_presets.cfg
+
+# Godot autoload cache
+*.uid
+*.godot
+
+# C#
+.mono/
+
+# Build
+build/
+*.o
+*.obj
+
+# OS
+Thumbs.db
+.DS_Store
+*.swp
+*.swo
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+
+# Submodules (addons brought in via git submodule)
+addons/
