@@ -7,6 +7,7 @@ var tint: Color = Color(0.35, 0.75, 0.85, 1.0)
 var pulse_time: float = 0.0
 var player: Player
 var item_data: ConsumableData
+var weapon_data: WeaponData
 
 func setup(pickup_name: String, pickup_amount: int, pickup_tint: Color, target_player: Player = null) -> void:
     item_name = pickup_name
@@ -14,6 +15,7 @@ func setup(pickup_name: String, pickup_amount: int, pickup_tint: Color, target_p
     tint = pickup_tint
     player = target_player
     item_data = null
+    weapon_data = null
     add_to_group("pickups")
     queue_redraw()
 
@@ -21,6 +23,17 @@ func setup_data(data: ConsumableData, pickup_amount: int, pickup_tint: Color, ta
     item_data = data
     item_name = data.item_name if data != null else "Unknown"
     amount = pickup_amount
+    tint = pickup_tint
+    player = target_player
+    weapon_data = null
+    add_to_group("pickups")
+    queue_redraw()
+
+func setup_weapon(data: WeaponData, pickup_tint: Color, target_player: Player = null) -> void:
+    weapon_data = data
+    item_data = null
+    item_name = data.weapon_name if data != null else "Unknown Weapon"
+    amount = 1
     tint = pickup_tint
     player = target_player
     add_to_group("pickups")
@@ -31,7 +44,12 @@ func _process(delta: float) -> void:
     queue_redraw()
 
 func collect(target_player: Player) -> void:
-    if item_data != null:
+    if weapon_data != null:
+        if target_player.weapons.size() >= 2:
+            target_player.weapons[1] = weapon_data
+            target_player.register_weapon(weapon_data)
+            target_player.equip_weapon(1)
+    elif item_data != null:
         if item_data.item_type == GameEnums.ConsumableType.HEALING:
             target_player.medkits = mini(target_player.medkits + amount, item_data.max_carry)
         elif item_data.item_type == GameEnums.ConsumableType.THROWABLE:
