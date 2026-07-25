@@ -31,7 +31,8 @@ func _ready() -> void:
 	capsule.height = 50.0
 	collision_shape.shape = capsule
 	body_sprite.scale = Vector2.ONE * data.sprite_scale
-	body_sprite.sprite_frames = SpriteFramesFactory.build_monster_frames(data.animation_base_path, data.animation_prefix)
+	if body_sprite.sprite_frames == null or data.animation_prefix != "demon":
+		body_sprite.sprite_frames = SpriteFramesFactory.build_monster_frames(data.animation_base_path, data.animation_prefix)
 	play_animation("idle")
 	state_machine.start()
 

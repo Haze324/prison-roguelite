@@ -45,7 +45,8 @@ func _ready() -> void:
 	collision_shape.shape = capsule
 	body_sprite.scale = Vector2.ONE * config.body_scale
 	shadow.texture = load("res://assets/runtime/character/shadow.png")
-	body_sprite.sprite_frames = SpriteFramesFactory.build_player_frames("res://assets/runtime/character/")
+	if body_sprite.sprite_frames == null:
+		body_sprite.sprite_frames = SpriteFramesFactory.build_player_frames("res://assets/runtime/character/")
 	play_body_animation("idle")
 	if weapons.is_empty():
 		push_warning("Player 没有配置武器资源")

@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/entities/monster/monster.gd" id="1_monster"]
 [ext_resource type="Script" path="res://scripts/core/state_machine.gd" id="2_machine"]
@@ -7,14 +7,22 @@
 [ext_resource type="Script" path="res://scripts/entities/monster/states/monster_chase_state.gd" id="5_chase"]
 [ext_resource type="Script" path="res://scripts/entities/monster/states/monster_attack_state.gd" id="6_attack"]
 [ext_resource type="Script" path="res://scripts/entities/monster/states/monster_dead_state.gd" id="7_dead"]
+[ext_resource type="Resource" path="res://resources/animations/monster_sprite_frames.tres" id="8_frames"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_monster"]
+radius = 22.0
+height = 50.0
 
 [node name="Monster" type="CharacterBody2D"]
 script = ExtResource("1_monster")
 
 [node name="BodySprite" type="AnimatedSprite2D" parent="."]
 position = Vector2(0, -10)
+sprite_frames = ExtResource("8_frames")
+animation = &"idle"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CapsuleShape2D_monster")
 
 [node name="StateMachine" type="Node" parent="."]
 script = ExtResource("2_machine")
@@ -34,4 +42,3 @@ script = ExtResource("6_attack")
 
 [node name="Dead" type="Node" parent="StateMachine"]
 script = ExtResource("7_dead")
-

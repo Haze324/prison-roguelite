@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/entities/player/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/core/state_machine.gd" id="2_machine"]
@@ -8,6 +8,11 @@
 [ext_resource type="Resource" path="res://resources/config/player_config.tres" id="6_config"]
 [ext_resource type="Resource" path="res://resources/weapons/pistol_common.tres" id="7_pistol"]
 [ext_resource type="Resource" path="res://resources/weapons/shotgun_common.tres" id="8_shotgun"]
+[ext_resource type="Resource" path="res://resources/animations/player_sprite_frames.tres" id="9_frames"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_player"]
+radius = 18.0
+height = 36.0
 
 [node name="Player" type="CharacterBody2D"]
 script = ExtResource("1_player")
@@ -21,6 +26,8 @@ scale = Vector2(1.5, 0.55)
 
 [node name="BodySprite" type="AnimatedSprite2D" parent="."]
 position = Vector2(0, -10)
+sprite_frames = ExtResource("9_frames")
+animation = &"idle"
 
 [node name="WeaponPivot" type="Node2D" parent="."]
 position = Vector2(18, -8)
@@ -30,6 +37,7 @@ position = Vector2(7, 0)
 scale = Vector2(2, 2)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CapsuleShape2D_player")
 
 [node name="StateMachine" type="Node" parent="."]
 script = ExtResource("2_machine")
