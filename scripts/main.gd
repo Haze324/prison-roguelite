@@ -89,8 +89,12 @@ func _update_hud() -> void:
 	if $Player/StateMachine.current_state != null:
 		current_state = $Player/StateMachine.current_state.name
 	var boss_text: String = "sleeping"
+	var boss_health: float = 0.0
+	var boss_max_health: float = 1.0
 	if _boss != null and is_instance_valid(_boss):
 		boss_text = "%.0f/%.0f" % [_boss.current_health, _boss.data.max_health]
+		boss_health = _boss.current_health
+		boss_max_health = _boss.data.max_health
 	status_label.text = "PRISON ROGUELITE DEMO\n\nHP: %.0f/%.0f   Medkits: %d\nWeapon: %s   Ammo: %s\nState: %s\nNoise: %.0f + %.0f\nKills: %d   Boss: %s\n\nWASD move | Shift dash\nLMB fire | R reload | RMB parry\nQ heal | E resupply in safehouse" % [
 		player.current_health,
 		player.max_health,
@@ -125,12 +129,16 @@ func _update_hud() -> void:
 		_residual_noise,
 		_kills,
 		boss_text,
+		boss_health,
+		boss_max_health,
 		_last_event,
 		_power_fixed,
 		_total_power_nodes,
 		armor_current,
 		armor_maximum,
 		throwable_summary,
+		player.get_quick_slot_counts(),
+		player.selected_quick_slot,
 		MetaProgression.coins,
 		MetaProgression.skill_points
 	)

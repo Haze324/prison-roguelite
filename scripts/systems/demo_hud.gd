@@ -13,12 +13,16 @@ var temporary_noise: float = 0.0
 var residual_noise: float = 0.0
 var kills: int = 0
 var boss_text: String = "SLEEPING"
+var boss_health: float = 0.0
+var boss_max_health: float = 1.0
 var event_text: String = "READY"
 var power_fixed: int = 0
 var power_total: int = 3
 var armor_durability: int = 0
 var armor_maximum: int = 0
 var throwable_summary: String = "-"
+var quick_slot_counts: Array[int] = [0, 0, 0, 0]
+var selected_quick_slot: int = 0
 var coins: int = 0
 var skill_points: int = 0
 var inventory_open: bool = false
@@ -81,12 +85,16 @@ func set_data(
     residual: float,
     defeated: int,
     boss_status: String,
+    current_boss_health: float,
+    maximum_boss_health: float,
     latest_event: String,
     current_power: int,
     total_power: int,
     current_armor: int,
     maximum_armor: int,
     throwables: String,
+    current_quick_slot_counts: Array[int],
+    current_selected_quick_slot: int,
     meta_coins: int,
     meta_skill_points: int
 ) -> void:
@@ -102,12 +110,16 @@ func set_data(
     residual_noise = residual
     kills = defeated
     boss_text = boss_status.to_upper()
+    boss_health = current_boss_health
+    boss_max_health = maximum_boss_health
     event_text = latest_event
     power_fixed = current_power
     power_total = total_power
     armor_durability = current_armor
     armor_maximum = maximum_armor
     throwable_summary = throwables
+    quick_slot_counts = current_quick_slot_counts.duplicate()
+    selected_quick_slot = current_selected_quick_slot
     coins = meta_coins
     skill_points = meta_skill_points
     queue_redraw()
@@ -123,6 +135,7 @@ func _draw() -> void:
     var accent := Color(0.36, 0.92, 0.74, 1.0)
     var warning := Color(1.0, 0.72, 0.28, 1.0)
     var danger := Color(1.0, 0.32, 0.34, 1.0)
+    var noise_total: float = temporary_noise + residual_noise
 
     var status_rect := Rect2(16.0, 16.0, 330.0, 194.0)
     draw_rect(status_rect, panel_color, true)
@@ -146,7 +159,8 @@ func _draw() -> void:
     draw_rect(mission_rect, Color(0.75, 0.42, 0.25, 0.95), false, 2.0)
     draw_string(font, mission_rect.position + Vector2(14.0, 26.0), "THREAT MONITOR", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 15, Color.WHITE)
     draw_string(font, mission_rect.position + Vector2(14.0, 50.0), "NOISE", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, Color(0.78, 0.86, 0.88, 1.0))
-    _draw_bar(Rect2(mission_rect.position + Vector2(14.0, 58.0), Vector2(206.0, 12.0)), (temporary_noise + residual_noise) / 200.0, warning)
+    var noise_color: Color = accent if noise_total <= 50.0 else warning if noise_total <= 120.0 else danger
+    _draw_bar(Rect2(mission_rect.position + Vector2(14.0, 58.0), Vector2(206.0, 12.0)), noise_total / 200.0, noise_color)
     draw_string(font, mission_rect.position + Vector2(14.0, 88.0), "%.0f TEMP  +  %.0f RESIDUAL" % [temporary_noise, residual_noise], HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, Color(0.95, 0.78, 0.5, 1.0))
     draw_string(font, mission_rect.position + Vector2(14.0, 116.0), "BOSS", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, Color(0.78, 0.86, 0.88, 1.0))
     draw_string(font, mission_rect.position + Vector2(62.0, 116.0), boss_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, danger if boss_text != "SLEEPING" else accent)
@@ -159,6 +173,15 @@ func _draw() -> void:
 
     var controls := "WASD MOVE   SHIFT RUN   SPACE DASH   T LIGHT   LMB FIRE   1/2 WEAPON   R RELOAD   RMB AIM/PARRY   Q HEAL   E INTERACT"
     draw_string(font, Vector2(18.0, screen.y - 12.0), controls, HORIZONTAL_ALIGNMENT_LEFT, screen.x - 36.0, 11, Color(0.65, 0.72, 0.74, 1.0))
+    _draw_quickbar(font, screen)
+    if noise_total >= 121.0:
+        var edge_alpha: float = clampf((noise_total - 120.0) / 80.0, 0.12, 0.4)
+        draw_rect(Rect2(0.0, 0.0, screen.x, 12.0), Color(1.0, 0.12, 0.14, edge_alpha), true)
+        draw_rect(Rect2(0.0, screen.y - 12.0, screen.x, 12.0), Color(1.0, 0.12, 0.14, edge_alpha), true)
+        draw_rect(Rect2(0.0, 0.0, 12.0, screen.y), Color(1.0, 0.12, 0.14, edge_alpha), true)
+        draw_rect(Rect2(screen.x - 12.0, 0.0, 12.0, screen.y), Color(1.0, 0.12, 0.14, edge_alpha), true)
+    if boss_health > 0.0:
+        _draw_boss_bar(font, screen, danger)
 
     var cursor: Vector2 = get_viewport().get_mouse_position()
     draw_line(cursor + Vector2(-10.0, 0.0), cursor + Vector2(-3.0, 0.0), accent, 2.0)
@@ -216,7 +239,49 @@ func _draw_inventory(font: Font, accent: Color, warning: Color) -> void:
     draw_string(font, right, "SUPPLIES", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 14, Color(0.18, 0.25, 0.25, 1.0))
     _draw_inventory_slot(font, right + Vector2(0.0, 20.0), "MEDKIT", "x%d" % medkits, Color(0.85, 0.3, 0.35, 1.0))
     _draw_inventory_slot(font, right + Vector2(0.0, 112.0), "THROWABLES", throwable_summary, Color(0.5, 0.35, 0.75, 1.0))
+    _draw_inventory_quickbar(font, panel.position + Vector2(390.0, 360.0))
     draw_string(font, panel.position + Vector2(64.0, 462.0), "COINS  %d     SKILL POINTS  %d" % [coins, skill_points], HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color(0.28, 0.4, 0.38, 1.0))
+
+func _draw_boss_bar(font: Font, screen: Vector2, danger: Color) -> void:
+    var bar := Rect2(screen.x * 0.5 - 240.0, 198.0, 480.0, 18.0)
+    draw_string(font, bar.position + Vector2(0.0, -8.0), "WARDEN  " + boss_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, danger)
+    _draw_bar(bar, boss_health / maxf(boss_max_health, 1.0), danger)
+
+func _draw_quickbar(font: Font, screen: Vector2) -> void:
+    var slot_size := 58.0
+    var gap := 8.0
+    var total_width := slot_size * 4.0 + gap * 3.0
+    var start_x := (screen.x - total_width) * 0.5
+    var y := screen.y - 142.0
+    for index in 4:
+        _draw_quick_slot(font, Vector2(start_x + index * (slot_size + gap), y), slot_size, index)
+
+func _draw_inventory_quickbar(font: Font, position: Vector2) -> void:
+    draw_string(font, position, "QUICK SLOTS  3  4  5  6", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, Color(0.22, 0.3, 0.3, 1.0))
+    for index in 4:
+        _draw_quick_slot(font, position + Vector2(index * 62.0, 18.0), 52.0, index)
+
+func _draw_quick_slot(font: Font, position: Vector2, slot_size: float, index: int) -> void:
+    var tint := _quick_color(index)
+    var alpha := 1.0 if index == selected_quick_slot else 0.76
+    draw_texture_rect(PaperUITheme.SLOT_HOLDER, Rect2(position, Vector2(slot_size, slot_size)), false, Color(1.0, 1.0, 1.0, alpha))
+    draw_texture_rect(PaperUITheme.ITEM_ICON, Rect2(position + Vector2(slot_size * 0.5 - 8.0, slot_size * 0.5 - 8.0), Vector2(16.0, 16.0)), false, tint)
+    if index == selected_quick_slot:
+        draw_arc(position + Vector2(slot_size * 0.5, slot_size * 0.5), slot_size * 0.47, 0.0, TAU, 32, tint, 2.0)
+    draw_string(font, position + Vector2(5.0, 14.0), str(index + 3), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 11, Color(0.18, 0.25, 0.25, 1.0))
+    var count: int = quick_slot_counts[index] if index < quick_slot_counts.size() else 0
+    draw_string(font, position + Vector2(slot_size - 18.0, slot_size - 7.0), str(count), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 11, tint if count > 0 else Color(0.45, 0.45, 0.45, 1.0))
+
+func _quick_color(index: int) -> Color:
+    match index:
+        0:
+            return Color(1.0, 0.78, 0.28, 1.0)
+        1:
+            return Color(0.65, 0.7, 0.78, 1.0)
+        2:
+            return Color(0.95, 0.3, 0.2, 1.0)
+        _:
+            return Color(0.75, 0.25, 0.85, 1.0)
 
 func _draw_inventory_slot(font: Font, position: Vector2, slot_name: String, value: String, tint: Color) -> void:
     draw_texture_rect(PaperUITheme.SLOT_HOLDER, Rect2(position, Vector2(72.0, 72.0)), false, Color(1.0, 1.0, 1.0, 0.92))

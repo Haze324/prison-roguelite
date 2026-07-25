@@ -20,6 +20,8 @@ var throwable_counts: Dictionary = {
 	"grenade": 1,
 	"mine": 1,
 }
+var quick_slot_items: Array[String] = ["flare", "smoke", "grenade", "mine"]
+var selected_quick_slot: int = 0
 var is_dead: bool = false
 var is_reloading: bool = false
 var current_ammo: int = 0
@@ -101,13 +103,13 @@ func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed("use_heal"):
 		use_medkit()
 	if Input.is_action_just_pressed("throw_flare"):
-		use_throwable(GameEnums.ThrowableType.FLARE, "flare")
+		use_quick_slot(0)
 	elif Input.is_action_just_pressed("throw_smoke"):
-		use_throwable(GameEnums.ThrowableType.SMOKE, "smoke")
+		use_quick_slot(1)
 	elif Input.is_action_just_pressed("throw_grenade"):
-		use_throwable(GameEnums.ThrowableType.GRENADE, "grenade")
+		use_quick_slot(2)
 	elif Input.is_action_just_pressed("throw_mine"):
-		use_throwable(GameEnums.ThrowableType.MINE, "mine")
+		use_quick_slot(3)
 	if Input.is_action_just_pressed("dash"):
 		_dash_requested = true
 	state_machine.physics_update(delta)
@@ -342,6 +344,20 @@ func use_throwable(throwable_type: int, inventory_key: String) -> bool:
 	EventBus.throwable_thrown.emit(throwable_type, global_position + direction * 72.0, direction, self)
 	EventBus.consumable_changed.emit(inventory_key, count - 1, 1)
 	return true
+
+func use_quick_slot(slot_index: int) -> bool:
+	if slot_index < 0 or slot_index >= quick_slot_items.size():
+		return false
+	selected_quick_slot = slot_index
+	var item_key: String = quick_slot_items[slot_index]
+	var throwable_type: int = slot_index
+	return use_throwable(throwable_type, item_key)
+
+func get_quick_slot_counts() -> Array[int]:
+	var counts: Array[int] = []
+	for item_key in quick_slot_items:
+		counts.append(int(throwable_counts.get(item_key, 0)))
+	return counts
 
 func is_protected_by_safehouse() -> bool:
 	for node in get_tree().get_nodes_in_group("safehouses"):
