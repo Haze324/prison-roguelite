@@ -268,6 +268,7 @@ func take_damage(amount: float, attacker: Node2D = null) -> void:
 	else:
 		final_damage *= 1.0 - armor_reduction
 	current_health = maxf(current_health - final_damage, 0.0)
+	EventBus.damage_feedback.emit(self, final_damage, global_position, true)
 	if armor != null:
 		EventBus.armor_changed.emit(armor.armor_name, armor.durability, armor.max_durability)
 	health_changed.emit(current_health, max_health)

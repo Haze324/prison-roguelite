@@ -26,14 +26,18 @@ var selected_quick_slot: int = 0
 var coins: int = 0
 var skill_points: int = 0
 var inventory_open: bool = false
+var damage_flash_remaining: float = 0.0
+var parry_flash_remaining: float = 0.0
 var _player: Player
 var screen_phase: String = "MENU"
 
 func _ready() -> void:
     process_mode = Node.PROCESS_MODE_ALWAYS
     mouse_filter = Control.MOUSE_FILTER_IGNORE
-    _player = get_node_or_null("../../Player") as Player
-    queue_redraw()
+	_player = get_node_or_null("../../Player") as Player
+	EventBus.damage_feedback.connect(_on_damage_feedback)
+	EventBus.player_parried.connect(_on_player_parried)
+	queue_redraw()
 
 func _unhandled_input(event: InputEvent) -> void:
     if event.is_action_pressed("inventory") and screen_phase == "RUN":
@@ -124,8 +128,10 @@ func set_data(
     skill_points = meta_skill_points
     queue_redraw()
 
-func _process(_delta: float) -> void:
-    queue_redraw()
+func _process(delta: float) -> void:
+	damage_flash_remaining = maxf(damage_flash_remaining - delta, 0.0)
+	parry_flash_remaining = maxf(parry_flash_remaining - delta, 0.0)
+	queue_redraw()
 
 func _draw() -> void:
     var screen: Vector2 = get_viewport_rect().size
@@ -180,8 +186,14 @@ func _draw() -> void:
         draw_rect(Rect2(0.0, screen.y - 12.0, screen.x, 12.0), Color(1.0, 0.12, 0.14, edge_alpha), true)
         draw_rect(Rect2(0.0, 0.0, 12.0, screen.y), Color(1.0, 0.12, 0.14, edge_alpha), true)
         draw_rect(Rect2(screen.x - 12.0, 0.0, 12.0, screen.y), Color(1.0, 0.12, 0.14, edge_alpha), true)
-    if boss_health > 0.0:
-        _draw_boss_bar(font, screen, danger)
+	if boss_health > 0.0:
+		_draw_boss_bar(font, screen, danger)
+	if damage_flash_remaining > 0.0:
+		var damage_alpha: float = damage_flash_remaining / 0.22 * 0.24
+		draw_rect(Rect2(Vector2.ZERO, screen), Color(1.0, 0.08, 0.12, damage_alpha), true)
+	if parry_flash_remaining > 0.0:
+		var parry_alpha: float = parry_flash_remaining / 0.28 * 0.28
+		draw_rect(Rect2(Vector2.ZERO, screen), Color(0.4, 0.9, 1.0, parry_alpha), true)
 
     var cursor: Vector2 = get_viewport().get_mouse_position()
     draw_line(cursor + Vector2(-10.0, 0.0), cursor + Vector2(-3.0, 0.0), accent, 2.0)
@@ -298,4 +310,11 @@ func _weapon_label(index: int) -> String:
 func _draw_bar(rect: Rect2, ratio: float, fill_color: Color) -> void:
     draw_rect(rect, Color(0.08, 0.1, 0.12, 1.0), true)
     draw_rect(Rect2(rect.position, Vector2(rect.size.x * clampf(ratio, 0.0, 1.0), rect.size.y)), fill_color, true)
-    draw_rect(rect, Color(0.65, 0.74, 0.75, 0.8), false, 1.0)
+	draw_rect(rect, Color(0.65, 0.74, 0.75, 0.8), false, 1.0)
+
+func _on_damage_feedback(_target: Node2D, _amount: float, _position: Vector2, is_player: bool) -> void:
+	if is_player:
+		damage_flash_remaining = 0.22
+
+func _on_player_parried(_attacker: Node2D) -> void:
+	parry_flash_remaining = 0.28

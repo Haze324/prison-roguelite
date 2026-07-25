@@ -2,6 +2,7 @@ extends Node2D
 
 const MONSTER_SCENE: PackedScene = preload("res://scenes/monster.tscn")
 const BOSS_DATA: MonsterData = preload("res://resources/monsters/boss_grunt.tres")
+const DAMAGE_POPUP_SCRIPT: Script = preload("res://scripts/entities/damage_popup.gd")
 
 @onready var player: Player = $Player
 @onready var demon: Monster = $DemonGrunt
@@ -43,6 +44,7 @@ func _ready() -> void:
 	EventBus.monster_alerted.connect(_on_monster_alerted)
 	EventBus.monster_killed.connect(_on_monster_killed)
 	EventBus.player_died.connect(_on_player_died)
+	EventBus.damage_feedback.connect(_on_damage_feedback)
 	EventBus.player_parried.connect(_on_player_parried)
 	EventBus.consumable_used.connect(_on_consumable_used)
 	EventBus.boss_awakened.connect(_on_boss_awakened)
@@ -329,6 +331,14 @@ func _on_run_restart_requested() -> void:
 
 func _on_player_parried(_attacker: Node2D) -> void:
 	_last_event = "Perfect parry!"
+
+func _on_damage_feedback(_target: Node2D, amount: float, position: Vector2, is_player: bool) -> void:
+	var popup: DamagePopup = DAMAGE_POPUP_SCRIPT.new() as DamagePopup
+	if popup == null:
+		return
+	add_child(popup)
+	var tint: Color = Color(1.0, 0.35, 0.38, 1.0) if is_player else Color(1.0, 0.82, 0.3, 1.0)
+	popup.setup(amount, position, tint)
 
 func _on_consumable_used(item_name: String) -> void:
 	_last_event = "Used / collected: " + item_name

@@ -181,7 +181,9 @@ func advance_death(delta: float) -> bool:
 func take_damage(amount: float) -> void:
 	if state_machine.current_state == $StateMachine/Dead or current_health <= 0.0 or boss_transition_remaining > 0.0:
 		return
-	current_health = maxf(current_health - amount * (1.0 - data.natural_armor), 0.0)
+	var final_damage: float = amount * (1.0 - data.natural_armor)
+	current_health = maxf(current_health - final_damage, 0.0)
+	EventBus.damage_feedback.emit(self, final_damage, global_position, false)
 	health_changed.emit(current_health, data.max_health)
 	queue_redraw()
 	if current_health <= 0.0:
