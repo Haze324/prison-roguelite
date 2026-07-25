@@ -27,7 +27,6 @@ var _power_fixed: int = 0
 var _total_power_nodes: int = 3
 var _power_seen: Dictionary = {}
 var _exit_gate: ExitGate
-var _safehouse_rect := Rect2(260.0, 230.0, 180.0, 140.0)
 
 func _ready() -> void:
 	demon.set_target(player)
@@ -51,6 +50,7 @@ func _ready() -> void:
 	EventBus.boss_ability_requested.connect(_on_boss_ability_requested)
 	EventBus.throwable_thrown.connect(_on_throwable_thrown)
 	EventBus.power_node_fixed.connect(_on_power_node_fixed)
+	EventBus.safehouse_discovered.connect(_on_safehouse_discovered)
 	EventBus.run_completed.connect(_on_run_completed)
 	EventBus.run_start_requested.connect(_on_run_start_requested)
 	EventBus.run_restart_requested.connect(_on_run_restart_requested)
@@ -70,7 +70,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not _run_over:
 		_collect_nearby_pickups()
-		if Input.is_action_just_pressed("interact") and _safehouse_rect.has_point(player.global_position):
+		if Input.is_action_just_pressed("interact") and safehouse.contains_point(player.global_position):
 			player.restore_at_safehouse()
 	elif Input.is_action_just_pressed("interact"):
 		get_tree().reload_current_scene()
@@ -200,6 +200,10 @@ func _on_power_node_fixed(node: Node2D, _fixed_count: int, _total_count: int) ->
 		EventBus.boss_awakened.emit(null)
 		if _boss_defeated and _exit_gate != null:
 			_exit_gate.set_available(true)
+
+func _on_safehouse_discovered(house_id: int) -> void:
+	map_generator.set_safehouse_discovered(safehouse.global_position)
+	_last_event = "Safehouse %d discovered — resupply and regroup here" % house_id
 
 func _on_run_completed(_escaped: bool, _reported_kills: int, _reported_coins: int) -> void:
 	if _run_over:

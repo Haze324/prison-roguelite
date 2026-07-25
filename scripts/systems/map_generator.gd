@@ -5,6 +5,8 @@ extends Node2D
 
 var obstacle_rects: Array[Rect2] = []
 var fixed_power_nodes: Dictionary = {}
+var safehouse_known: bool = false
+var safehouse_position: Vector2 = Vector2.ZERO
 
 func generate(new_seed: int = 0) -> void:
 	map_seed = new_seed if new_seed != 0 else randi()
@@ -12,6 +14,7 @@ func generate(new_seed: int = 0) -> void:
 		child.queue_free()
 	obstacle_rects.clear()
 	fixed_power_nodes.clear()
+	safehouse_known = false
 	var candidates: Array[Rect2] = [
 		Rect2(540.0, 170.0, 180.0, 34.0),
 		Rect2(820.0, 300.0, 36.0, 220.0),
@@ -31,6 +34,11 @@ func generate(new_seed: int = 0) -> void:
 
 func set_power_node_fixed(index: int) -> void:
 	fixed_power_nodes[index] = true
+	queue_redraw()
+
+func set_safehouse_discovered(position: Vector2) -> void:
+	safehouse_known = true
+	safehouse_position = position
 	queue_redraw()
 
 func _add_obstacle(rect: Rect2) -> void:
@@ -71,6 +79,9 @@ func _draw() -> void:
 		var restored: bool = fixed_power_nodes.has(index)
 		draw_circle(power_position, 118.0 if restored else 84.0, Color(0.05, 0.55, 0.52, 0.11 if restored else 0.025))
 		draw_circle(power_position, 62.0, Color(0.12, 0.8, 0.7, 0.09 if restored else 0.02))
+	if safehouse_known:
+		draw_circle(safehouse_position, 16.0, Color(0.35, 0.95, 0.75, 0.18))
+		draw_arc(safehouse_position, 22.0, 0.0, TAU, 32, Color(0.35, 0.95, 0.75, 0.72), 2.0)
 	for rect in obstacle_rects:
 		draw_rect(rect.grow(5.0), Color(0.035, 0.025, 0.035, 1.0), true)
 		draw_rect(rect, Color(0.27, 0.19, 0.23, 1.0), true)
