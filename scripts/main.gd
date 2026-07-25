@@ -160,7 +160,7 @@ func _on_shot_fired(weapon_data: WeaponData, position: Vector2, direction: Vecto
 		var projectile: Projectile = Projectile.new()
 		add_child(projectile)
 		var shot_damage: float = DamageSystem.calculate_weapon_damage(weapon_data, 0.0, player.is_aiming)
-		projectile.setup(position, direction.rotated(spread_angle), weapon_data.projectile_speed, shot_damage, player, weapon_data.effects)
+		projectile.setup(position, direction.rotated(spread_angle), weapon_data.projectile_speed, shot_damage, player, weapon_data.effects, weapon_data.range)
 	var shot_noise: int = 0 if weapon_data.effects.has(GameEnums.BuffType.SILENCED) else weapon_data.noise
 	EventBus.noise_emitted.emit(shot_noise, position, player)
 	_last_event = "Fired %s (%d pellet%s)" % [weapon_data.weapon_name, pellet_count, "" if pellet_count == 1 else "s"]
