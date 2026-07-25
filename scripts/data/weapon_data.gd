@@ -18,6 +18,7 @@ extends Resource
 
 ## 弹匣容量；近战武器可设为 0。
 @export var mag_size: int = 12
+@export var reserve_ammo: int = 24
 
 ## 换弹耗时；近战武器可设为 0。
 @export var reload_time: float = 1.5

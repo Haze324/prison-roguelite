@@ -11,6 +11,7 @@ weapon_type = 1
 damage = 6.0
 rarity = 0
 mag_size = 6
+reserve_ammo = 18
 reload_time = 3.0
 pellets = 5
 fire_rate = 0.7

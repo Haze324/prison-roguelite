@@ -84,7 +84,7 @@ func _update_hud() -> void:
 	if not player.weapons.is_empty():
 		var weapon: WeaponData = player.weapons[player.current_weapon_index]
 		weapon_name = weapon.weapon_name
-		ammo_text = "%d/%d" % [player.current_ammo, weapon.mag_size]
+		ammo_text = "%d/%d + %d" % [player.current_ammo, weapon.mag_size, player.get_current_reserve_ammo()]
 	var current_state: String = "Init"
 	if $Player/StateMachine.current_state != null:
 		current_state = $Player/StateMachine.current_state.name
@@ -119,6 +119,7 @@ func _update_hud() -> void:
 		weapon_name,
 		player.current_ammo,
 		player.weapons[player.current_weapon_index].mag_size if not player.weapons.is_empty() else 0,
+		player.get_current_reserve_ammo(),
 		current_state,
 		_temporary_noise,
 		_residual_noise,

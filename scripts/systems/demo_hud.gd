@@ -7,6 +7,7 @@ var medkits: int = 0
 var weapon_name: String = "NONE"
 var ammo: int = 0
 var ammo_capacity: int = 0
+var ammo_reserve: int = 0
 var player_state: String = "IDLE"
 var temporary_noise: float = 0.0
 var residual_noise: float = 0.0
@@ -32,6 +33,7 @@ func set_data(
     current_weapon: String,
     current_ammo: int,
     capacity: int,
+    reserve: int,
     state: String,
     temp_noise: float,
     residual: float,
@@ -52,6 +54,7 @@ func set_data(
     weapon_name = current_weapon.to_upper()
     ammo = current_ammo
     ammo_capacity = capacity
+    ammo_reserve = reserve
     player_state = state.to_upper()
     temporary_noise = temp_noise
     residual_noise = residual
@@ -87,7 +90,7 @@ func _draw() -> void:
     draw_string(font, Vector2(30.0, 88.0), "HP", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color.WHITE)
     _draw_bar(Rect2(66.0, 77.0, 210.0, 13.0), health / maxf(max_health, 1.0), danger)
     draw_string(font, Vector2(30.0, 112.0), "AMMO", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color.WHITE)
-    draw_string(font, Vector2(82.0, 112.0), "%s   %d / %d" % [weapon_name, ammo, ammo_capacity], HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, accent)
+    draw_string(font, Vector2(82.0, 112.0), "%s   %d / %d  + %d" % [weapon_name, ammo, ammo_capacity, ammo_reserve], HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, accent)
     draw_string(font, Vector2(30.0, 136.0), "MEDKITS", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color.WHITE)
     draw_string(font, Vector2(104.0, 136.0), "x%d    STATE: %s" % [medkits, player_state], HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color(0.9, 0.82, 0.62, 1.0))
     draw_string(font, Vector2(30.0, 160.0), "ARMOR", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color.WHITE)

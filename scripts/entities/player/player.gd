@@ -23,6 +23,8 @@ var throwable_counts: Dictionary = {
 var is_dead: bool = false
 var is_reloading: bool = false
 var current_ammo: int = 0
+var ammo_reserves: Dictionary = {}
+var magazine_ammo: Dictionary = {}
 var _reload_remaining: float = 0.0
 var _parry_remaining: float = 0.0
 var _parry_cooldown_remaining: float = 0.0
@@ -66,6 +68,8 @@ func _ready() -> void:
 	if weapons.is_empty():
 		push_warning("Player 没有配置武器资源")
 	else:
+		for weapon in weapons:
+			register_weapon(weapon)
 		equip_weapon(0)
 	state_machine.start()
 
@@ -176,6 +180,7 @@ func shoot() -> void:
 		return
 	if weapon.mag_size > 0:
 		current_ammo -= 1
+		magazine_ammo[_weapon_key(weapon)] = current_ammo
 		ammo_changed.emit(current_ammo, weapon.mag_size)
 	_shoot_cooldown_remaining = weapon.fire_rate
 	var direction := (get_global_mouse_position() - weapon_pivot.global_position).normalized()
@@ -188,7 +193,8 @@ func equip_weapon(index: int) -> void:
 	var weapon := weapons[current_weapon_index]
 	is_reloading = false
 	_reload_remaining = 0.0
-	current_ammo = weapon.mag_size
+	register_weapon(weapon)
+	current_ammo = int(magazine_ammo.get(_weapon_key(weapon), weapon.mag_size))
 	weapon_sprite.texture = weapon.icon
 	ammo_changed.emit(current_ammo, weapon.mag_size)
 	EventBus.weapon_switched.emit(current_weapon_index, weapon)
@@ -207,7 +213,8 @@ func reload_weapon() -> void:
 	if weapons.is_empty() or is_reloading:
 		return
 	var weapon := weapons[current_weapon_index]
-	if weapon.mag_size <= 0 or current_ammo >= weapon.mag_size:
+	var reserve: int = int(ammo_reserves.get(_weapon_key(weapon), weapon.reserve_ammo))
+	if weapon.mag_size <= 0 or current_ammo >= weapon.mag_size or reserve <= 0:
 		return
 	is_reloading = true
 	_reload_remaining = weapon.reload_time
@@ -217,8 +224,15 @@ func _finish_reload() -> void:
 	is_reloading = false
 	if weapons.is_empty():
 		return
-	current_ammo = weapons[current_weapon_index].mag_size
-	ammo_changed.emit(current_ammo, weapons[current_weapon_index].mag_size)
+	var weapon: WeaponData = weapons[current_weapon_index]
+	var key: int = _weapon_key(weapon)
+	var reserve: int = int(ammo_reserves.get(key, weapon.reserve_ammo))
+	var needed: int = weapon.mag_size - current_ammo
+	var loaded: int = mini(needed, reserve)
+	current_ammo += loaded
+	ammo_reserves[key] = reserve - loaded
+	magazine_ammo[key] = current_ammo
+	ammo_changed.emit(current_ammo, weapon.mag_size)
 
 func start_parry() -> void:
 	if weapons.is_empty() or not weapons[current_weapon_index].is_melee or _parry_cooldown_remaining > 0.0 or is_reloading:
@@ -278,11 +292,38 @@ func restore_at_safehouse() -> void:
 		armor.repair()
 		EventBus.armor_changed.emit(armor.armor_name, armor.durability, armor.max_durability)
 	if not weapons.is_empty():
-		current_ammo = weapons[current_weapon_index].mag_size
+		refill_ammo()
 	health_changed.emit(current_health, max_health)
 	ammo_changed.emit(current_ammo, weapons[current_weapon_index].mag_size if not weapons.is_empty() else 0)
 	EventBus.player_health_changed.emit(current_health, max_health)
 	EventBus.consumable_used.emit("Safehouse resupply")
+
+func register_weapon(weapon: WeaponData) -> void:
+	if weapon == null:
+		return
+	var key: int = _weapon_key(weapon)
+	if not ammo_reserves.has(key):
+		ammo_reserves[key] = weapon.reserve_ammo
+	if not magazine_ammo.has(key):
+		magazine_ammo[key] = weapon.mag_size
+
+func refill_ammo() -> void:
+	for weapon in weapons:
+		register_weapon(weapon)
+		var key: int = _weapon_key(weapon)
+		ammo_reserves[key] = weapon.reserve_ammo
+		magazine_ammo[key] = weapon.mag_size
+	if not weapons.is_empty():
+		current_ammo = int(magazine_ammo.get(_weapon_key(weapons[current_weapon_index]), 0))
+		ammo_changed.emit(current_ammo, weapons[current_weapon_index].mag_size)
+
+func get_current_reserve_ammo() -> int:
+	if weapons.is_empty():
+		return 0
+	return int(ammo_reserves.get(_weapon_key(weapons[current_weapon_index]), 0))
+
+func _weapon_key(weapon: WeaponData) -> int:
+	return weapon.get_instance_id()
 
 func use_throwable(throwable_type: int, inventory_key: String) -> bool:
 	var count: int = int(throwable_counts.get(inventory_key, 0))

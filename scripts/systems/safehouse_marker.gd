@@ -4,11 +4,11 @@ extends Node2D
 @export var size: Vector2 = Vector2(180.0, 140.0)
 
 func _ready() -> void:
-	add_to_group("safehouses")
-	queue_redraw()
+    add_to_group("safehouses")
+    queue_redraw()
 
 func contains_point(point: Vector2) -> bool:
-	return Rect2(-size * 0.5, size).has_point(to_local(point))
+    return Rect2(-size * 0.5, size).has_point(to_local(point))
 
 func _draw() -> void:
     var rect := Rect2(-size * 0.5, size)

@@ -21,13 +21,12 @@ func collect(player: Player) -> void:
     if item_name == "Medkit":
         player.medkits = mini(player.medkits + amount, 5)
     elif item_name == "Ammo":
-        if not player.weapons.is_empty():
-            player.current_ammo = player.weapons[player.current_weapon_index].mag_size
-            player.ammo_changed.emit(player.current_ammo, player.weapons[player.current_weapon_index].mag_size)
+        player.refill_ammo()
     elif item_name == "Shotgun":
         var shotgun: WeaponData = load("res://resources/weapons/shotgun_common.tres") as WeaponData
         if shotgun != null and player.weapons.size() >= 2:
             player.weapons[1] = shotgun
+            player.register_weapon(shotgun)
             player.equip_weapon(1)
     EventBus.consumable_used.emit(item_name + " +%d" % amount)
     queue_free()
