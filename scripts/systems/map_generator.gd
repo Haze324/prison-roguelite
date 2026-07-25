@@ -106,16 +106,9 @@ func set_safehouse_discovered(position: Vector2) -> void:
 
 func _add_obstacle(rect: Rect2) -> void:
 	obstacle_rects.append(rect)
-	var body := StaticBody2D.new()
-	body.position = rect.position + rect.size * 0.5
-	body.collision_layer = 1
-	body.collision_mask = 1
-	var shape := CollisionShape2D.new()
-	var rectangle := RectangleShape2D.new()
-	rectangle.size = rect.size
-	shape.shape = rectangle
-	body.add_child(shape)
-	add_child(body)
+	var wall: Wall = Wall.new()
+	add_child(wall)
+	wall.setup(rect, obstacle_rects.size())
 
 func _draw() -> void:
 	var floor_rect := Rect2(0.0, 0.0, 1680.0, 1080.0)
@@ -140,10 +133,3 @@ func _draw() -> void:
 	if safehouse_known:
 		draw_circle(safehouse_position, 16.0, Color(0.35, 0.95, 0.75, 0.18))
 		draw_arc(safehouse_position, 22.0, 0.0, TAU, 32, Color(0.35, 0.95, 0.75, 0.72), 2.0)
-	for rect in obstacle_rects:
-		draw_rect(rect.grow(5.0), Color(0.035, 0.025, 0.035, 1.0), true)
-		draw_rect(rect, Color(0.27, 0.19, 0.23, 1.0), true)
-		draw_rect(rect, Color(0.62, 0.38, 0.43, 0.95), false, 2.0)
-		draw_line(rect.position + Vector2(4.0, 6.0), Vector2(rect.end.x - 4.0, rect.position.y + 6.0), Color(0.78, 0.51, 0.45, 0.45), 2.0)
-		draw_circle(rect.position + Vector2(8.0, 8.0), 2.0, Color(0.88, 0.63, 0.42, 0.8))
-		draw_circle(rect.end - Vector2(8.0, 8.0), 2.0, Color(0.88, 0.63, 0.42, 0.8))

@@ -65,30 +65,6 @@ script = ExtResource("11_merchant")
 position = Vector2(270, 300)
 script = ExtResource("12_skill_terminal")
 
-[node name="NorthWall" type="StaticBody2D" parent="."]
-position = Vector2(600, -300)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="NorthWall"]
-shape = SubResource("RectangleShape2D_wall_h")
-
-[node name="SouthWall" type="StaticBody2D" parent="."]
-position = Vector2(600, 1100)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="SouthWall"]
-shape = SubResource("RectangleShape2D_wall_h")
-
-[node name="WestWall" type="StaticBody2D" parent="."]
-position = Vector2(-600, 400)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="WestWall"]
-shape = SubResource("RectangleShape2D_wall_v")
-
-[node name="EastWall" type="StaticBody2D" parent="."]
-position = Vector2(1800, 400)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="EastWall"]
-shape = SubResource("RectangleShape2D_wall_v")
-
 [node name="Player" parent="." instance=ExtResource("2_player")]
 position = Vector2(400, 350)
 

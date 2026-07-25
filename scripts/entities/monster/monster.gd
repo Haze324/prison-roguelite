@@ -215,7 +215,7 @@ func _draw() -> void:
 	draw_rect(bar_rect, Color(1.0, 0.72, 0.58, 0.9), false, 1.0)
 	draw_string(ThemeDB.fallback_font, Vector2(-38.0, -67.0), data.monster_name.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, 76.0, 10, Color(1.0, 0.78, 0.68, 1.0))
 	if data.is_boss:
-		draw_string(ThemeDB.fallback_font, Vector2(-38.0, -78.0), "PHASE %d" % boss_phase, HORIZONTAL_ALIGNMENT_LEFT, 76.0, 10, Color(1.0, 0.45, 0.25, 1.0))
+		draw_string(ThemeDB.fallback_font, Vector2(-38.0, -78.0), "阶段 %d" % boss_phase, HORIZONTAL_ALIGNMENT_LEFT, 76.0, 10, Color(1.0, 0.45, 0.25, 1.0))
 
 func hear_noise(source_position: Vector2, amount: int) -> void:
 	if current_health <= 0.0 or not is_instance_valid(target) or amount < data.hearing_threshold:

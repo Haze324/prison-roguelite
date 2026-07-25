@@ -63,6 +63,7 @@ func _ready() -> void:
 	EventBus.run_start_requested.connect(_on_run_start_requested)
 	EventBus.run_restart_requested.connect(_on_run_restart_requested)
 	map_generator.generate()
+	_build_boundary_walls()
 	_spawn_data_pickup(Vector2(330.0, 480.0), MEDKIT_DATA, 1, Color(0.85, 0.25, 0.3, 1.0))
 	_spawn_pickup(Vector2(760.0, 650.0), "Ammo", 1, Color(0.3, 0.7, 0.9, 1.0))
 	_spawn_data_pickup(Vector2(1180.0, 330.0), MEDKIT_DATA, 1, Color(0.85, 0.25, 0.3, 1.0))
@@ -77,7 +78,7 @@ func _ready() -> void:
 	add_child(_exit_gate)
 	_exit_gate.position = Vector2(1500.0, 760.0)
 	_exit_gate.setup(player)
-	_last_event = "WASD move, Shift run, Space dash, LMB fire"
+	_last_event = "准备行动：移动、射击或打开背包"
 	demo_hud.show_main_menu()
 
 func _process(delta: float) -> void:
@@ -161,7 +162,7 @@ func _on_shot_fired(weapon_data: WeaponData, position: Vector2, direction: Vecto
 		_perform_melee_attack(weapon_data, position, direction)
 		var melee_noise: int = 0 if weapon_data.effects.has(GameEnums.BuffType.SILENCED) else weapon_data.noise
 		EventBus.noise_emitted.emit(melee_noise, position, player)
-		_last_event = "Melee strike: %s" % weapon_data.weapon_name
+		_last_event = "近战攻击：%s" % weapon_data.weapon_name
 		return
 	var pellet_count: int = maxi(weapon_data.pellets, 1)
 	if weapon_data.effects.has(GameEnums.BuffType.TWIN_SHOT):
@@ -176,13 +177,13 @@ func _on_shot_fired(weapon_data: WeaponData, position: Vector2, direction: Vecto
 		projectile.setup(position, direction.rotated(spread_angle), weapon_data.projectile_speed, shot_damage, player, weapon_data.effects, weapon_data.range)
 	var shot_noise: int = 0 if weapon_data.effects.has(GameEnums.BuffType.SILENCED) else weapon_data.noise
 	EventBus.noise_emitted.emit(shot_noise, position, player)
-	_last_event = "Fired %s (%d pellet%s)" % [weapon_data.weapon_name, pellet_count, "" if pellet_count == 1 else "s"]
+	_last_event = "开火：%s（%d 发）" % [weapon_data.weapon_name, pellet_count]
 
 func _on_throwable_thrown(throwable_type: int, position: Vector2, _direction: Vector2, source: Node2D) -> void:
 	var throwable: Throwable = Throwable.new()
 	add_child(throwable)
 	throwable.setup(throwable_type, position, source)
-	_last_event = "Throwable deployed: %d" % throwable_type
+	_last_event = "已投掷物品：%d" % throwable_type
 
 func _spawn_power_nodes() -> void:
 	var positions: Array[Vector2] = [
@@ -196,6 +197,18 @@ func _spawn_power_nodes() -> void:
 		node.position = positions[index]
 		node.setup(index, player)
 
+func _build_boundary_walls() -> void:
+	var boundary_rects: Array[Rect2] = [
+		Rect2(-40.0, -40.0, 1760.0, 36.0),
+		Rect2(-40.0, 1080.0, 1760.0, 36.0),
+		Rect2(-40.0, -40.0, 36.0, 1156.0),
+		Rect2(1680.0, -40.0, 36.0, 1156.0),
+	]
+	for index in boundary_rects.size():
+		var wall: Wall = Wall.new()
+		add_child(wall)
+		wall.setup(boundary_rects[index], index + 1)
+
 func _on_power_node_fixed(node: Node2D, _fixed_count: int, _total_count: int) -> void:
 	if node == null or not is_instance_valid(node):
 		return
@@ -207,16 +220,16 @@ func _on_power_node_fixed(node: Node2D, _fixed_count: int, _total_count: int) ->
 	if power_node != null:
 		map_generator.set_power_node_fixed(power_node.node_index)
 	EventBus.noise_emitted.emit(95, node.global_position, player)
-	_last_event = "Power node %d/%d fixed — noise broadcast" % [_power_fixed, _total_power_nodes]
+	_last_event = "电源 %d / %d 已修复，噪声正在扩散" % [_power_fixed, _total_power_nodes]
 	if _power_fixed >= _total_power_nodes:
-		_last_event = "All power restored — the Warden is awake"
+		_last_event = "全部电力已恢复，守卫者已经苏醒"
 		EventBus.boss_awakened.emit(null)
 		if _boss_defeated and _exit_gate != null:
 			_exit_gate.set_available(true)
 
 func _on_safehouse_discovered(house_id: int) -> void:
 	map_generator.set_safehouse_discovered(safehouse.global_position)
-	_last_event = "Safehouse %d discovered — resupply and regroup here" % house_id
+	_last_event = "安全屋 %d 已发现，可在此补给整备" % house_id
 
 func _on_run_completed(_escaped: bool, _reported_kills: int, _reported_coins: int) -> void:
 	if _run_over:
@@ -226,7 +239,7 @@ func _on_run_completed(_escaped: bool, _reported_kills: int, _reported_coins: in
 	MetaProgression.add_coins(reward)
 	MetaProgression.add_skill_points(1)
 	MetaProgression.record_run("escaped")
-	_last_event = "ESCAPED — +%d coins, +1 skill point — press E to run again" % reward
+	_last_event = "已成功撤离：硬币 +%d，技能点 +1" % reward
 	demo_hud.show_result()
 
 func _perform_melee_attack(weapon_data: WeaponData, position: Vector2, direction: Vector2) -> void:
@@ -262,26 +275,26 @@ func _on_boss_awakened(_unused: Node2D) -> void:
 	add_child(boss)
 	boss.set_target(player)
 	_boss = boss
-	_last_event = "BOSS AWAKENED — survive and defeat the Warden"
+	_last_event = "守卫者已苏醒：活下来并击败它"
 	EventBus.boss_awakened.emit(boss)
 
 func _on_boss_phase_changed(boss: Node2D, phase: int) -> void:
 	if boss == _boss:
-		_last_event = "WARDEN PHASE %d — telegraphed attack incoming" % phase
+		_last_event = "守卫者进入第 %d 阶段，准备躲避攻击" % phase
 
 func _on_boss_ability_requested(boss: Node2D, ability_type: int, target_position: Vector2) -> void:
 	if boss != _boss or _run_over:
 		return
 	if ability_type == 1:
 		_spawn_hazard(target_position, ability_type)
-		_last_event = "WARDEN SLAM — leave the warning circle"
+		_last_event = "守卫者重击：离开警示区域"
 		return
 	var origin: Vector2 = boss.global_position
 	var base_angle: float = origin.angle_to_point(target_position)
 	for index in 3:
 		var offset: Vector2 = Vector2.from_angle(base_angle + (index - 1) * 0.45) * 110.0
 		_spawn_hazard(target_position + offset, ability_type)
-	_last_event = "WARDEN ACID SPRAY — three zones marked"
+	_last_event = "守卫者酸液喷射：三个危险区域已标记"
 
 func _spawn_hazard(position: Vector2, hazard_type: int) -> void:
 	var hazard := HazardZone.new()
@@ -314,17 +327,17 @@ func _collect_nearby_pickups() -> void:
 			pickup.collect(player)
 
 func _on_weapon_switched(slot_index: int, weapon_data: WeaponData) -> void:
-	_last_event = "Switched weapon #%d: %s" % [slot_index + 1, weapon_data.weapon_name]
+	_last_event = "切换武器 %d：%s" % [slot_index + 1, weapon_data.weapon_name]
 
 func _on_dash_started(_position: Vector2, direction: Vector2) -> void:
-	_last_event = "Dash %s" % direction.round()
+	_last_event = "冲刺 %s" % direction.round()
 
 func _on_state_changed(_previous_state: String, next_state: String) -> void:
 	if next_state != "Parry":
-		_last_event = "State: " + next_state
+		_last_event = "状态：" + next_state
 
 func _on_monster_alerted(monster: Node2D, _source: Vector2) -> void:
-	_last_event = "%s heard the noise" % monster.name
+	_last_event = "%s 听到了噪声" % monster.name
 
 func _on_monster_killed(monster: Node2D) -> void:
 	_kills += 1
@@ -334,26 +347,26 @@ func _on_monster_killed(monster: Node2D) -> void:
 		if _exit_gate != null:
 			_exit_gate.set_available(_power_fixed >= _total_power_nodes)
 		_run_over = false
-		_last_event = "WARDEN DEFEATED — reach the extraction gate"
+		_last_event = "守卫者已击败，前往撤离门"
 	else:
-		_last_event = "%s defeated" % monster.name
+		_last_event = "%s 已被击败" % monster.name
 
 func _on_player_died() -> void:
 	_run_over = true
-	_last_event = "YOU DIED — current run lost"
+	_last_event = "任务失败，本局携带物资已丢失"
 	demo_hud.show_death()
 
 func _on_run_start_requested() -> void:
 	_run_over = false
 	demo_hud.show_run()
-	_last_event = "Run started — restore power and reach extraction"
+	_last_event = "任务开始：修复电力并抵达撤离点"
 
 func _on_run_restart_requested() -> void:
 	get_tree().paused = false
 	get_tree().reload_current_scene()
 
 func _on_player_parried(_attacker: Node2D) -> void:
-	_last_event = "Perfect parry!"
+	_last_event = "完美格挡！"
 
 func _on_damage_feedback(_target: Node2D, amount: float, position: Vector2, is_player: bool) -> void:
 	var popup: DamagePopup = DAMAGE_POPUP_SCRIPT.new() as DamagePopup
@@ -364,4 +377,4 @@ func _on_damage_feedback(_target: Node2D, amount: float, position: Vector2, is_p
 	popup.setup(amount, position, tint)
 
 func _on_consumable_used(item_name: String) -> void:
-	_last_event = "Used / collected: " + item_name
+	_last_event = "已使用 / 拾取：" + item_name

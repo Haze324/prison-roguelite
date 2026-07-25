@@ -288,7 +288,7 @@ func use_medkit() -> bool:
 	current_health = minf(current_health + heal_amount, max_health)
 	health_changed.emit(current_health, max_health)
 	EventBus.player_health_changed.emit(current_health, max_health)
-	EventBus.consumable_used.emit("Medkit")
+	EventBus.consumable_used.emit("使用医疗包")
 	return true
 
 func restore_at_safehouse() -> void:
@@ -302,7 +302,7 @@ func restore_at_safehouse() -> void:
 	health_changed.emit(current_health, max_health)
 	ammo_changed.emit(current_ammo, weapons[current_weapon_index].mag_size if not weapons.is_empty() else 0)
 	EventBus.player_health_changed.emit(current_health, max_health)
-	EventBus.consumable_used.emit("Safehouse resupply")
+	EventBus.consumable_used.emit("安全屋补给完成")
 
 func register_weapon(weapon: WeaponData) -> void:
 	if weapon == null:

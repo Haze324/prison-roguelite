@@ -40,10 +40,10 @@ func _draw() -> void:
     draw_circle(Vector2(0.0, -8.0), 6.0, edge)
     var nearby: bool = player != null and global_position.distance_to(player.global_position) <= 120.0
     if nearby:
-        draw_string(ThemeDB.fallback_font, Vector2(-28.0, -32.0), "POWER %d" % (node_index + 1), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, edge)
-        var action_text: String = "FIXED" if fixed else "E: FIX"
+        draw_string(ThemeDB.fallback_font, Vector2(-28.0, -32.0), "电源 %d" % (node_index + 1), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, edge)
+        var action_text: String = "已修复" if fixed else "E：修复"
         if fixing:
-            action_text = "FIX %.1fs" % fix_remaining
+            action_text = "修复 %.1f 秒" % fix_remaining
         draw_string(ThemeDB.fallback_font, Vector2(-30.0, 58.0), action_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, edge)
     if fixing:
         var progress: float = 1.0 - clampf(fix_remaining, 0.0, 1.0)

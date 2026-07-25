@@ -66,7 +66,7 @@ func collect(target_player: Player) -> void:
             target_player.weapons[1] = shotgun
             target_player.register_weapon(shotgun)
             target_player.equip_weapon(1)
-    EventBus.consumable_used.emit(item_name + " +%d" % amount)
+    EventBus.consumable_used.emit("拾取：" + _display_name(item_name) + " ×%d" % amount)
     queue_free()
 
 func _draw() -> void:
@@ -77,4 +77,7 @@ func _draw() -> void:
     draw_line(Vector2(0.0, bob - 5.0), Vector2(0.0, bob + 5.0), Color.WHITE, 2.0)
     var nearby: bool = player == null or global_position.distance_to(player.global_position) <= 120.0
     if nearby:
-        draw_string(ThemeDB.fallback_font, Vector2(-32.0, -18.0 + bob), item_name.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, tint)
+        draw_string(ThemeDB.fallback_font, Vector2(-42.0, -18.0 + bob), _display_name(item_name), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, tint)
+
+func _display_name(value: String) -> String:
+    return value.replace("Medkit", "医疗包").replace("Ammo", "弹药").replace("Shotgun", "霰弹枪").replace("Pistol", "手枪").replace("Crowbar", "撬棍").replace("Flare", "信号弹").replace("Smoke", "烟雾弹").replace("Grenade", "手雷").replace("Mine", "地雷").replace("Fine", "精良").replace("Common", "普通").replace("Rare", "稀有").replace("Epic", "史诗").replace("Legendary", "传说").replace("Unknown Weapon", "未知武器").replace("Unknown", "未知物品")

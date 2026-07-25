@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_data")
-monster_name = "Blood Monster"
+monster_name = "血肉怪物"
 tier = 0
 hearing_threshold = 4
 hearing_range = 500.0

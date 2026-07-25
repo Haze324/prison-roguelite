@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_data")
-monster_name = "Demon Grunt"
+monster_name = "恶魔守卫"
 tier = 0
 hearing_threshold = 9
 hearing_range = 400.0

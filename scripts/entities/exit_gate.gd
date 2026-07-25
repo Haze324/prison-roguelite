@@ -25,4 +25,4 @@ func _draw() -> void:
     draw_rect(Rect2(-32.0, -46.0, 64.0, 92.0), Color(0.04, 0.05, 0.07, 0.95), true)
     draw_rect(Rect2(-32.0, -46.0, 64.0, 92.0), edge, false, 3.0)
     draw_line(Vector2(-18.0, 30.0), Vector2(18.0, 30.0), edge, 3.0)
-    draw_string(ThemeDB.fallback_font, Vector2(-36.0, -56.0), "EXTRACT" if available else "LOCKED", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, edge)
+    draw_string(ThemeDB.fallback_font, Vector2(-36.0, -56.0), "撤离" if available else "未解锁", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, edge)

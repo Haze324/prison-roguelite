@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_consumable")
-item_name = "Medkit"
+item_name = "医疗包"
 item_type = 2
 max_carry = 3
 use_noise = 0

@@ -10,7 +10,23 @@ var discovered: bool = false
 
 func _ready() -> void:
     add_to_group("safehouses")
+    _build_boundary_walls()
     queue_redraw()
+
+func _build_boundary_walls() -> void:
+    var thickness: float = 14.0
+    var doorway: float = 52.0
+    var wall_rects: Array[Rect2] = [
+        Rect2(-size.x * 0.5, -size.y * 0.5, size.x, thickness),
+        Rect2(-size.x * 0.5, -size.y * 0.5, thickness, size.y),
+        Rect2(size.x * 0.5 - thickness, -size.y * 0.5, thickness, size.y),
+        Rect2(-size.x * 0.5, size.y * 0.5 - thickness, (size.x - doorway) * 0.5, thickness),
+        Rect2(doorway * 0.5, size.y * 0.5 - thickness, (size.x - doorway) * 0.5, thickness),
+    ]
+    for index in wall_rects.size():
+        var wall: Wall = Wall.new()
+        add_child(wall)
+        wall.setup(wall_rects[index], index + 2)
 
 func contains_point(point: Vector2) -> bool:
     return Rect2(-size * 0.5, size).has_point(to_local(point))
@@ -39,5 +55,5 @@ func _draw() -> void:
     draw_arc(Vector2.ZERO, 104.0, 0.0, TAU, 48, Color(0.35, 0.95, 0.75, 0.24), 2.0)
     var nearby: bool = player != null and global_position.distance_to(player.global_position) <= 180.0
     if nearby:
-        draw_string(ThemeDB.fallback_font, Vector2(-67.0, -52.0), "SAFEHOUSE", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 14, edge)
-        draw_string(ThemeDB.fallback_font, Vector2(-54.0, 58.0), "E: RESUPPLY", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, Color(0.75, 0.9, 0.82, 1.0))
+        draw_string(ThemeDB.fallback_font, Vector2(-48.0, -52.0), "安全屋", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 14, edge)
+        draw_string(ThemeDB.fallback_font, Vector2(-46.0, 58.0), "E：补给整备", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, Color(0.75, 0.9, 0.82, 1.0))
