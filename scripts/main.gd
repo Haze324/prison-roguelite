@@ -18,6 +18,11 @@ var _residual_noise: float = 0.0
 var _last_event: String = "Demo ready"
 var _death_timer: float = 0.0
 var _run_over: bool = false
+var _boss_defeated: bool = false
+var _power_fixed: int = 0
+var _total_power_nodes: int = 3
+var _power_seen: Dictionary = {}
+var _exit_gate: ExitGate
 var _safehouse_rect := Rect2(260.0, 230.0, 180.0, 140.0)
 
 func _ready() -> void:
@@ -35,9 +40,17 @@ func _ready() -> void:
 	EventBus.player_parried.connect(_on_player_parried)
 	EventBus.consumable_used.connect(_on_consumable_used)
 	EventBus.boss_awakened.connect(_on_boss_awakened)
+	EventBus.throwable_thrown.connect(_on_throwable_thrown)
+	EventBus.power_node_fixed.connect(_on_power_node_fixed)
+	EventBus.run_completed.connect(_on_run_completed)
 	_spawn_pickup(Vector2(330.0, 480.0), "Medkit", 1, Color(0.85, 0.25, 0.3, 1.0))
 	_spawn_pickup(Vector2(760.0, 650.0), "Ammo", 1, Color(0.3, 0.7, 0.9, 1.0))
 	_spawn_pickup(Vector2(1180.0, 330.0), "Medkit", 1, Color(0.85, 0.25, 0.3, 1.0))
+	_spawn_power_nodes()
+	_exit_gate = ExitGate.new()
+	add_child(_exit_gate)
+	_exit_gate.position = Vector2(1500.0, 760.0)
+	_exit_gate.setup(player)
 	_last_event = "WASD move, LMB fire, RMB parry"
 
 func _process(delta: float) -> void:
@@ -115,6 +128,47 @@ func _on_shot_fired(weapon_data: WeaponData, position: Vector2, direction: Vecto
 	EventBus.noise_emitted.emit(weapon_data.noise, position, player)
 	_last_event = "Fired %s (%d pellet%s)" % [weapon_data.weapon_name, pellet_count, "" if pellet_count == 1 else "s"]
 
+func _on_throwable_thrown(throwable_type: int, position: Vector2, _direction: Vector2, source: Node2D) -> void:
+	var throwable: Throwable = Throwable.new()
+	add_child(throwable)
+	throwable.setup(throwable_type, position, source)
+	_last_event = "Throwable deployed: %d" % throwable_type
+
+func _spawn_power_nodes() -> void:
+	var positions: Array[Vector2] = [
+		Vector2(620.0, 170.0),
+		Vector2(1040.0, 760.0),
+		Vector2(1320.0, 360.0),
+	]
+	for index in positions.size():
+		var node: PowerNode = PowerNode.new()
+		add_child(node)
+		node.position = positions[index]
+		node.setup(index, player)
+
+func _on_power_node_fixed(node: Node2D, _fixed_count: int, _total_count: int) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	if _power_seen.has(node.get_instance_id()):
+		return
+	_power_seen[node.get_instance_id()] = true
+	_power_fixed += 1
+	EventBus.noise_emitted.emit(95, node.global_position, player)
+	_last_event = "Power node %d/%d fixed — noise broadcast" % [_power_fixed, _total_power_nodes]
+	if _power_fixed >= _total_power_nodes:
+		_last_event = "All power restored — the Warden is awake"
+		EventBus.boss_awakened.emit(null)
+
+func _on_run_completed(_escaped: bool, _reported_kills: int, _reported_coins: int) -> void:
+	if _run_over:
+		return
+	_run_over = true
+	var reward: int = 50 + _kills * 5 + (50 if _boss_defeated else 0)
+	MetaProgression.add_coins(reward)
+	MetaProgression.add_skill_points(1)
+	MetaProgression.record_run("escaped")
+	_last_event = "ESCAPED — +%d coins, +1 skill point — press E to run again" % reward
+
 func _perform_melee_attack(weapon_data: WeaponData, position: Vector2, direction: Vector2) -> void:
 	var facing: Vector2 = direction.normalized()
 	var minimum_dot: float = cos(deg_to_rad(weapon_data.hitbox_angle * 0.5))
@@ -179,8 +233,12 @@ func _on_monster_alerted(monster: Node2D, _source: Vector2) -> void:
 func _on_monster_killed(monster: Node2D) -> void:
 	_kills += 1
 	if monster == _boss:
+		_boss_defeated = true
 		_run_over = true
-		_last_event = "DEMO COMPLETE — press E to start a new run"
+		if _exit_gate != null:
+			_exit_gate.set_available(_power_fixed >= _total_power_nodes)
+		_run_over = false
+		_last_event = "WARDEN DEFEATED — reach the extraction gate"
 	else:
 		_last_event = "%s defeated" % monster.name
 

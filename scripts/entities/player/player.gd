@@ -14,6 +14,12 @@ var max_health: float = 100.0
 var current_health: float = 100.0
 var armor_reduction: float = 0.15
 var medkits: int = 3
+var throwable_counts: Dictionary = {
+	"flare": 1,
+	"smoke": 1,
+	"grenade": 1,
+	"mine": 1,
+}
 var is_dead: bool = false
 var is_reloading: bool = false
 var current_ammo: int = 0
@@ -84,6 +90,14 @@ func _physics_process(delta: float) -> void:
 		start_parry()
 	if Input.is_action_just_pressed("use_heal"):
 		use_medkit()
+	if Input.is_action_just_pressed("throw_flare"):
+		use_throwable(GameEnums.ThrowableType.FLARE, "flare")
+	elif Input.is_action_just_pressed("throw_smoke"):
+		use_throwable(GameEnums.ThrowableType.SMOKE, "smoke")
+	elif Input.is_action_just_pressed("throw_grenade"):
+		use_throwable(GameEnums.ThrowableType.GRENADE, "grenade")
+	elif Input.is_action_just_pressed("throw_mine"):
+		use_throwable(GameEnums.ThrowableType.MINE, "mine")
 	if Input.is_action_just_pressed("dash"):
 		_dash_requested = true
 	state_machine.physics_update(delta)
@@ -263,3 +277,15 @@ func restore_at_safehouse() -> void:
 	ammo_changed.emit(current_ammo, weapons[current_weapon_index].mag_size if not weapons.is_empty() else 0)
 	EventBus.player_health_changed.emit(current_health, max_health)
 	EventBus.consumable_used.emit("Safehouse resupply")
+
+func use_throwable(throwable_type: int, inventory_key: String) -> bool:
+	var count: int = int(throwable_counts.get(inventory_key, 0))
+	if count <= 0 or is_dead:
+		return false
+	throwable_counts[inventory_key] = count - 1
+	var direction: Vector2 = (get_global_mouse_position() - global_position).normalized()
+	if direction == Vector2.ZERO:
+		direction = Vector2.RIGHT
+	EventBus.throwable_thrown.emit(throwable_type, global_position + direction * 72.0, direction, self)
+	EventBus.consumable_changed.emit(inventory_key, count - 1, 1)
+	return true
