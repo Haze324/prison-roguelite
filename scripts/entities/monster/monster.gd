@@ -20,8 +20,8 @@ var attack_hit_applied := false
 var noise_target := Vector2.ZERO
 
 func _ready() -> void:
-    add_to_group("monsters")
-    state_machine.state_changed.connect(_on_state_changed)
+	add_to_group("monsters")
+	state_machine.state_changed.connect(_on_state_changed)
 	if data == null:
 		data = MonsterData.new()
 	current_health = data.max_health
