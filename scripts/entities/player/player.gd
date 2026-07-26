@@ -475,6 +475,8 @@ func use_consumable() -> bool:
 	if count <= 0:
 		return false
 	if consumable_slot_item == "ammo_box":
+		if not needs_ammo_refill():
+			return false
 		refill_ammo()
 	elif consumable_slot_item == "adrenaline":
 		_adrenaline_remaining = 6.0
@@ -523,6 +525,18 @@ func get_current_reserve_ammo() -> int:
 	if weapons.is_empty():
 		return 0
 	return int(ammo_reserves.get(_weapon_key(weapons[current_weapon_index]), 0))
+
+func needs_ammo_refill() -> bool:
+	for weapon_index in weapons.size():
+		var weapon: WeaponData = weapons[weapon_index]
+		if weapon == null or weapon.mag_size <= 0:
+			continue
+		var weapon_key: int = _weapon_key(weapon)
+		var magazine: int = int(magazine_ammo.get(weapon_key, weapon.mag_size))
+		var reserve: int = int(ammo_reserves.get(weapon_key, weapon.reserve_ammo))
+		if magazine < weapon.mag_size or reserve < weapon.reserve_ammo:
+			return true
+	return false
 
 func get_weapon_display_icon(index: int) -> Texture2D:
 	if index < 0 or index >= weapons.size():
