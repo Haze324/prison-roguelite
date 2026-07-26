@@ -132,6 +132,12 @@ extends Resource
 ## 近战武器挂载显示缩放，可在对应武器 .tres 中单独调节
 @export var melee_visual_scale: float = 0.08
 
+## 近战握持端相对贴图中心的源图像像素偏移
+@export var melee_grip_offset: Vector2 = Vector2.ZERO
+
+## 近战贴图自身旋转偏移，用于让武器长轴对齐攻击方向
+@export var melee_rotation_offset: float = 0.0
+
 ## 单发/单颗弹丸伤害（稀有度乘数在管线中另外应用）
 @export var damage: float = 15.0
 
