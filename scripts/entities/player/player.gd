@@ -599,20 +599,37 @@ func add_consumable(item_key: String, amount: int, maximum: int = 5) -> void:
 		_add_backpack_item("consumable", item_key, consumable_display_name(item_key), amount)
 	EventBus.consumable_changed.emit(item_key, int(consumable_counts[item_key]), maximum)
 
-func _add_backpack_item(kind: String, item_key: String, display_name: String, amount: int) -> void:
+func _add_backpack_item(kind: String, item_key: String, display_name: String, amount: int, extra_record: Dictionary = {}) -> bool:
 	for item_index in backpack_items.size():
 		var item: Dictionary = backpack_items[item_index]
 		var existing_key: String = String(item.get("key", ""))
-		if not item.is_empty() and existing_key == item_key:
+		if not item.is_empty() and existing_key == item_key and kind != "weapon" and kind != "armor":
 			item["count"] = int(item.get("count", 0)) + amount
-			return
+			return true
 	for item_index in backpack_items.size():
 		if backpack_items[item_index].is_empty():
-			backpack_items[item_index] = {"kind": kind, "key": item_key, "name": display_name, "count": amount}
-			return
+			var empty_slot_record: Dictionary = {"kind": kind, "key": item_key, "name": display_name, "count": amount}
+			empty_slot_record.merge(extra_record, true)
+			backpack_items[item_index] = empty_slot_record
+			return true
 	if backpack_items.size() >= backpack_capacity:
-		return
-	backpack_items.append({"kind": kind, "key": item_key, "name": display_name, "count": amount})
+		return false
+	var new_record: Dictionary = {"kind": kind, "key": item_key, "name": display_name, "count": amount}
+	new_record.merge(extra_record, true)
+	backpack_items.append(new_record)
+	return true
+
+func add_weapon_to_inventory(weapon_data: WeaponData) -> bool:
+	if weapon_data == null:
+		return false
+	if weapons.size() < 2:
+		weapons.append(weapon_data)
+		register_weapon(weapon_data)
+		equip_weapon(weapons.size() - 1)
+		return true
+	var item_key: String = "weapon_pickup_%d" % weapon_data.get_instance_id()
+	var display_icon: Texture2D = weapon_data.display_icon if weapon_data.display_icon != null else weapon_data.icon
+	return _add_backpack_item("weapon", item_key, weapon_data.weapon_name, 1, {"data": weapon_data, "icon": display_icon})
 
 func consumable_display_name(item_key: String) -> String:
 	match item_key:

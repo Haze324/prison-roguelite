@@ -44,11 +44,9 @@ func _process(delta: float) -> void:
     queue_redraw()
 
 func collect(target_player: Player) -> void:
-    if weapon_data != null:
-        if target_player.weapons.size() >= 2:
-            target_player.weapons[1] = weapon_data
-            target_player.register_weapon(weapon_data)
-            target_player.equip_weapon(1)
+	if weapon_data != null:
+		if not target_player.add_weapon_to_inventory(weapon_data):
+			return
     elif item_data != null:
         if item_data.item_type == GameEnums.ConsumableType.HEALING:
             target_player.medkits = mini(target_player.medkits + amount, item_data.max_carry)
@@ -63,12 +61,10 @@ func collect(target_player: Player) -> void:
         target_player.medkits = mini(target_player.medkits + amount, 5)
     elif item_name == "Ammo":
         target_player.add_consumable("ammo_box", amount)
-    elif item_name == "Shotgun":
-        var shotgun: WeaponData = load("res://resources/weapons/shotgun_common.tres") as WeaponData
-        if shotgun != null and target_player.weapons.size() >= 2:
-            target_player.weapons[1] = shotgun
-            target_player.register_weapon(shotgun)
-            target_player.equip_weapon(1)
+	elif item_name == "Shotgun":
+		var shotgun: WeaponData = load("res://resources/weapons/shotgun_common.tres") as WeaponData
+		if shotgun != null and not target_player.add_weapon_to_inventory(shotgun):
+			return
     EventBus.consumable_used.emit("拾取：" + _display_name(item_name) + " ×%d" % amount)
     queue_free()
 
