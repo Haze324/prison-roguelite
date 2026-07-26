@@ -1001,6 +1001,8 @@ func throwable_display_name(item_key: String) -> String:
 func select_active_slot(slot_index: int, suppress_primary: bool = false) -> void:
 	if slot_index < 0 or slot_index > 5:
 		return
+	if _throw_charging and slot_index != _throw_slot + 4:
+		_cancel_throw_charge()
 	if slot_index < 2 and slot_index >= weapons.size():
 		selected_active_slot = current_weapon_index if not weapons.is_empty() else 0
 		selected_quick_slot = selected_active_slot
@@ -1071,6 +1073,12 @@ func _release_throw_charge() -> void:
 	_throw_charge = 0.0
 	var item_key: String = throwable_slot_items[slot]
 	use_throwable(throwable_type_for_key(item_key), item_key, charge_ratio)
+	queue_redraw()
+
+func _cancel_throw_charge() -> void:
+	_throw_charging = false
+	_throw_slot = -1
+	_throw_charge = 0.0
 	queue_redraw()
 
 func _check_active_slot_input() -> void:
