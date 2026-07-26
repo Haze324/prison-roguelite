@@ -1,12 +1,13 @@
 [gd_resource type="Resource" script_class="WeaponData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/weapon_data.gd" id="1_weapon"]
-[ext_resource type="Texture2D" path="res://assets/runtime/weapons/crowbar.svg" id="2_icon"]
+[ext_resource type="Texture2D" path="res://assets/侧视角/20 melee weapons/20 melee weapons/Crowbar .PNG" id="2_icon"]
 
 [resource]
 script = ExtResource("1_weapon")
 weapon_name = "Crowbar"
 icon = ExtResource("2_icon")
+visual_scale = 0.14
 weapon_type = 2
 damage = 28.0
 rarity = 0

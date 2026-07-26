@@ -37,6 +37,11 @@ var _movement_noise_timer: float = 0.0
 var _action_visual_remaining: float = 0.0
 var _action_visual_type: String = ""
 var _muzzle_flash_remaining: float = 0.0
+var _melee_swing_remaining: float = 0.0
+var _throw_charging: bool = false
+var _throw_slot: int = -1
+var _throw_charge: float = 0.0
+var _throw_charge_duration: float = 0.85
 var _facing_left: bool = false
 var _last_move_direction: Vector2 = Vector2.RIGHT
 var is_aiming: bool = false
@@ -47,6 +52,7 @@ var is_aiming: bool = false
 @onready var weapon_sprite: Sprite2D = $WeaponPivot/WeaponSprite
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 @onready var state_machine: StateMachine = $StateMachine
+@onready var camera: Camera2D = get_node_or_null("Camera2D") as Camera2D
 var flashlight_cone: FlashlightCone
 var flashlight_light: PointLight2D
 
@@ -57,6 +63,8 @@ var _dash_cooldown_remaining := 0.0
 var _dash_requested := false
 var _shoot_cooldown_remaining := 0.0
 var flashlight_on: bool = true
+@export var camera_look_ahead: float = 180.0
+@export var aim_speed_multiplier: float = 0.62
 
 func _ready() -> void:
 	state_machine.state_changed.connect(_on_state_machine_changed)
@@ -76,9 +84,17 @@ func _ready() -> void:
 	if body_sprite.sprite_frames == null:
 		body_sprite.sprite_frames = SpriteFramesFactory.build_player_frames("res://assets/runtime/character/")
 	SpriteFramesFactory.ensure_player_action_animations(body_sprite.sprite_frames, "res://assets/runtime/character/")
+	if camera == null:
+		camera = Camera2D.new()
+		camera.name = "Camera2D"
+		camera.position = Vector2.ZERO
+		camera.position_smoothing_enabled = true
+		camera.position_smoothing_speed = 8.0
+		add_child(camera)
 	flashlight_cone = FlashlightCone.new()
 	flashlight_cone.name = "手电筒光束"
-	flashlight_cone.z_index = -1
+	flashlight_cone.z_index = 0
+	flashlight_cone.show_behind_parent = true
 	add_child(flashlight_cone)
 	_setup_flashlight_light()
 	play_body_animation("idle")
@@ -106,6 +122,7 @@ func _physics_process(delta: float) -> void:
 	var action_was_active: bool = _action_visual_remaining > 0.0
 	_action_visual_remaining = maxf(_action_visual_remaining - delta, 0.0)
 	_muzzle_flash_remaining = maxf(_muzzle_flash_remaining - delta, 0.0)
+	_melee_swing_remaining = maxf(_melee_swing_remaining - delta, 0.0)
 	if action_was_active and _action_visual_remaining <= 0.0 and _action_visual_type != "" and not is_reloading:
 		_action_visual_type = ""
 		play_body_animation("walk" if get_move_direction() != Vector2.ZERO else "idle")
@@ -124,19 +141,13 @@ func _physics_process(delta: float) -> void:
 		queue_redraw()
 	if Input.is_action_just_pressed("use_heal"):
 		use_medkit()
-	if Input.is_action_just_pressed("throw_flare"):
-		use_quick_slot(0)
-	elif Input.is_action_just_pressed("throw_smoke"):
-		use_quick_slot(1)
-	elif Input.is_action_just_pressed("throw_grenade"):
-		use_quick_slot(2)
-	elif Input.is_action_just_pressed("throw_mine"):
-		use_quick_slot(3)
+	_process_throw_input(delta)
 	if Input.is_action_just_pressed("dash"):
 		_dash_requested = true
+	is_aiming = Input.is_action_pressed("aim")
+	_update_camera_aim(delta)
 	state_machine.physics_update(delta)
 	update_aim()
-	is_aiming = Input.is_action_pressed("aim")
 	if Input.is_action_pressed("shoot"):
 		shoot()
 	_check_weapon_input()
@@ -152,6 +163,8 @@ func apply_normal_movement(direction: Vector2, _delta: float) -> void:
 		body_sprite.flip_h = _facing_left
 	var running: bool = Input.is_action_pressed("run") and direction != Vector2.ZERO
 	var movement_speed: float = config.run_speed if running else config.move_speed
+	if is_aiming:
+		movement_speed *= aim_speed_multiplier
 	velocity = direction * movement_speed
 	move_and_slide()
 	if direction != Vector2.ZERO and _movement_noise_timer <= 0.0:
@@ -213,6 +226,18 @@ func update_aim() -> void:
 		flashlight_light.rotation = aim.angle()
 		flashlight_light.enabled = flashlight_on
 
+func _update_camera_aim(delta: float) -> void:
+	if camera == null:
+		return
+	var viewport_size: Vector2 = get_viewport_rect().size
+	var cursor_offset: Vector2 = get_viewport().get_mouse_position() - viewport_size * 0.5
+	var normalized_offset: Vector2 = Vector2(
+		clampf(cursor_offset.x / maxf(viewport_size.x * 0.5, 1.0), -1.0, 1.0),
+		clampf(cursor_offset.y / maxf(viewport_size.y * 0.5, 1.0), -1.0, 1.0)
+	)
+	var target_offset: Vector2 = normalized_offset * camera_look_ahead if is_aiming else Vector2.ZERO
+	camera.position = camera.position.lerp(target_offset, 1.0 - exp(-10.0 * delta))
+
 func shoot() -> void:
 	if weapons.is_empty() or _shoot_cooldown_remaining > 0.0 or is_reloading:
 		return
@@ -225,6 +250,9 @@ func shoot() -> void:
 		magazine_ammo[_weapon_key(weapon)] = current_ammo
 		ammo_changed.emit(current_ammo, weapon.mag_size)
 	_shoot_cooldown_remaining = weapon.fire_rate
+	if weapon.is_melee:
+		_melee_swing_remaining = minf(weapon.fire_rate * 0.65, 0.34)
+		_start_action_visual("melee_swing", _melee_swing_remaining)
 	_muzzle_flash_remaining = 0.08
 	queue_redraw()
 	var direction := (get_global_mouse_position() - weapon_pivot.global_position).normalized()
@@ -237,9 +265,13 @@ func equip_weapon(index: int) -> void:
 	var weapon := weapons[current_weapon_index]
 	is_reloading = false
 	_reload_remaining = 0.0
+	_reload_duration = 0.0
+	_action_visual_remaining = 0.0
+	_action_visual_type = ""
 	register_weapon(weapon)
 	current_ammo = int(magazine_ammo.get(_weapon_key(weapon), weapon.mag_size))
-	weapon_sprite.texture = weapon.icon
+	weapon_sprite.texture = get_weapon_display_icon(current_weapon_index)
+	weapon_sprite.scale = Vector2.ONE * weapon.visual_scale
 	ammo_changed.emit(current_ammo, weapon.mag_size)
 	EventBus.weapon_switched.emit(current_weapon_index, weapon)
 
@@ -381,13 +413,63 @@ func get_current_reserve_ammo() -> int:
 		return 0
 	return int(ammo_reserves.get(_weapon_key(weapons[current_weapon_index]), 0))
 
+func get_weapon_display_icon(index: int) -> Texture2D:
+	if index < 0 or index >= weapons.size():
+		return null
+	var weapon: WeaponData = weapons[index]
+	if weapon == null or weapon.icon == null:
+		return null
+	if weapon.display_icon != null:
+		return weapon.display_icon
+	if not weapon.icon.resource_path.to_lower().contains("crowbar .png"):
+		weapon.display_icon = weapon.icon
+		return weapon.display_icon
+	var image: Image = Image.load_from_file(weapon.icon.resource_path)
+	if image == null or image.is_empty():
+		weapon.display_icon = weapon.icon
+		return weapon.display_icon
+	image.convert(Image.FORMAT_RGBA8)
+	var width: int = image.get_width()
+	var height: int = image.get_height()
+	var background: Color = image.get_pixel(0, 0)
+	var queued: PackedByteArray = PackedByteArray()
+	queued.resize(width * height)
+	var queue: Array[Vector2i] = []
+	for x in width:
+		_enqueue_background_pixel(image, Vector2i(x, 0), background, queued, queue)
+		_enqueue_background_pixel(image, Vector2i(x, height - 1), background, queued, queue)
+	for y in height:
+		_enqueue_background_pixel(image, Vector2i(0, y), background, queued, queue)
+		_enqueue_background_pixel(image, Vector2i(width - 1, y), background, queued, queue)
+	var head: int = 0
+	while head < queue.size():
+		var point: Vector2i = queue[head]
+		head += 1
+		var pixel: Color = image.get_pixelv(point)
+		image.set_pixelv(point, Color(pixel.r, pixel.g, pixel.b, 0.0))
+		for neighbor in [point + Vector2i.LEFT, point + Vector2i.RIGHT, point + Vector2i.UP, point + Vector2i.DOWN]:
+			if neighbor.x >= 0 and neighbor.x < width and neighbor.y >= 0 and neighbor.y < height:
+				_enqueue_background_pixel(image, neighbor, background, queued, queue)
+	weapon.display_icon = ImageTexture.create_from_image(image)
+	return weapon.display_icon
+
+func _enqueue_background_pixel(image: Image, point: Vector2i, background: Color, queued: PackedByteArray, queue: Array[Vector2i]) -> void:
+	var index: int = point.y * image.get_width() + point.x
+	if queued[index] != 0:
+		return
+	var pixel: Color = image.get_pixelv(point)
+	if absf(pixel.r - background.r) > 0.11 or absf(pixel.g - background.g) > 0.11 or absf(pixel.b - background.b) > 0.11:
+		return
+	queued[index] = 1
+	queue.append(point)
+
 func _weapon_key(weapon: WeaponData) -> int:
 	return weapon.get_instance_id()
 
 func has_skill(skill_name: String) -> bool:
 	return MetaProgression.unlocked_skills.has(skill_name)
 
-func use_throwable(throwable_type: int, inventory_key: String) -> bool:
+func use_throwable(throwable_type: int, inventory_key: String, charge_ratio: float = 1.0) -> bool:
 	var count: int = int(throwable_counts.get(inventory_key, 0))
 	if count <= 0 or is_dead:
 		return false
@@ -395,7 +477,7 @@ func use_throwable(throwable_type: int, inventory_key: String) -> bool:
 	var direction: Vector2 = (get_global_mouse_position() - global_position).normalized()
 	if direction == Vector2.ZERO:
 		direction = Vector2.RIGHT
-	EventBus.throwable_thrown.emit(throwable_type, global_position + direction * 72.0, direction, self)
+	EventBus.throwable_thrown.emit(throwable_type, global_position + direction * 72.0, direction, self, clampf(charge_ratio, 0.2, 1.0))
 	_start_action_visual("throw", 0.45)
 	EventBus.consumable_changed.emit(inventory_key, count - 1, 1)
 	return true
@@ -425,6 +507,46 @@ func use_quick_slot(slot_index: int) -> bool:
 	var throwable_type: int = slot_index
 	return use_throwable(throwable_type, item_key)
 
+func _process_throw_input(delta: float) -> void:
+	var actions: Array[String] = ["throw_flare", "throw_smoke", "throw_grenade", "throw_mine"]
+	for slot in actions.size():
+		var action: String = actions[slot]
+		if Input.is_action_just_pressed(action):
+			_begin_throw_charge(slot)
+		if _throw_charging and _throw_slot == slot and Input.is_action_just_released(action):
+			_release_throw_charge()
+	if _throw_charging:
+		_throw_charge = minf(_throw_charge + delta, _throw_charge_duration)
+		queue_redraw()
+
+func _begin_throw_charge(slot: int) -> void:
+	if slot < 0 or slot >= quick_slot_items.size() or is_dead:
+		return
+	var item_key: String = quick_slot_items[slot]
+	if int(throwable_counts.get(item_key, 0)) <= 0:
+		return
+	selected_quick_slot = slot
+	_throw_slot = slot
+	_throw_charge = 0.0
+	_throw_charging = true
+	queue_redraw()
+
+func _release_throw_charge() -> void:
+	if not _throw_charging or _throw_slot < 0 or _throw_slot >= quick_slot_items.size():
+		return
+	var slot: int = _throw_slot
+	var charge_ratio: float = clampf(_throw_charge / _throw_charge_duration, 0.2, 1.0)
+	_throw_charging = false
+	_throw_slot = -1
+	_throw_charge = 0.0
+	use_throwable(slot, quick_slot_items[slot], charge_ratio)
+	queue_redraw()
+
+func get_reload_ratio() -> float:
+	if not is_reloading or _reload_duration <= 0.0:
+		return 0.0
+	return clampf(1.0 - _reload_remaining / _reload_duration, 0.0, 1.0)
+
 func get_quick_slot_counts() -> Array[int]:
 	var counts: Array[int] = []
 	for item_key in quick_slot_items:
@@ -451,17 +573,19 @@ func _setup_flashlight_light() -> void:
 	flashlight_light.energy = 0.9
 	flashlight_light.color = Color(1.0, 0.88, 0.58, 1.0)
 	flashlight_light.shadow_enabled = true
-	var gradient: Gradient = Gradient.new()
-	gradient.colors = PackedColorArray([Color.WHITE, Color(1.0, 0.9, 0.6, 0.0)])
-	var texture: GradientTexture2D = GradientTexture2D.new()
-	texture.gradient = gradient
-	texture.width = 256
-	texture.height = 256
-	texture.fill = GradientTexture2D.FILL_RADIAL
-	texture.fill_from = Vector2(0.5, 0.5)
-	texture.fill_to = Vector2(1.0, 0.5)
+	var image: Image = Image.create(320, 160, false, Image.FORMAT_RGBA8)
+	for x in 320:
+		var progress: float = float(x) / 319.0
+		var spread: float = lerpf(4.0, 72.0, progress)
+		for y in 160:
+			var distance_from_center: float = absf(float(y) - 80.0)
+			var edge: float = clampf((spread - distance_from_center) / maxf(spread * 0.35, 1.0), 0.0, 1.0)
+			var alpha: float = edge * (1.0 - progress * 0.82) * 0.9
+			image.set_pixel(x, y, Color(1.0, 0.92, 0.62, alpha))
+	var texture: ImageTexture = ImageTexture.create_from_image(image)
 	flashlight_light.texture = texture
-	flashlight_light.texture_scale = 1.4
+	flashlight_light.texture_scale = 1.15
+	flashlight_light.texture_offset = Vector2(160.0, 0.0)
 	add_child(flashlight_light)
 
 func _draw() -> void:
@@ -478,6 +602,15 @@ func _draw() -> void:
 		var muzzle: Vector2 = weapon_pivot.position + Vector2.RIGHT.rotated(weapon_pivot.rotation) * 38.0
 		draw_circle(muzzle, 8.0, Color(1.0, 0.82, 0.3, 0.85))
 		draw_line(muzzle, muzzle + Vector2.RIGHT.rotated(weapon_pivot.rotation) * 18.0, Color(1.0, 0.96, 0.7, 0.9), 3.0)
+	if _melee_swing_remaining > 0.0 and weapon_pivot != null:
+		var swing_ratio: float = clampf(_melee_swing_remaining / 0.34, 0.0, 1.0)
+		var swing_angle: float = weapon_pivot.rotation
+		draw_arc(weapon_pivot.position, 56.0, swing_angle - 0.95, swing_angle + 0.95, 24, Color(1.0, 0.82, 0.42, 0.78 * swing_ratio), 5.0)
+		draw_arc(weapon_pivot.position, 44.0, swing_angle - 0.72, swing_angle + 0.72, 18, Color(0.85, 0.94, 0.88, 0.52 * swing_ratio), 2.0)
+	if _throw_charging:
+		var charge_ratio: float = clampf(_throw_charge / _throw_charge_duration, 0.0, 1.0)
+		draw_arc(Vector2.ZERO, 42.0, -PI * 0.5, -PI * 0.5 + TAU * charge_ratio, 28, Color(1.0, 0.72, 0.3, 0.95), 4.0)
+		draw_string(ThemeDB.fallback_font, Vector2(-22.0, -82.0), "蓄力 %.0f%%" % (charge_ratio * 100.0), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 9, Color(1.0, 0.82, 0.42, 1.0))
 	if _parry_remaining > 0.0:
 		var parry_angle: float = _parry_direction.angle()
 		draw_arc(Vector2.ZERO, 38.0, parry_angle - 0.72, parry_angle + 0.72, 18, Color(0.45, 0.9, 1.0, 0.9), 4.0)

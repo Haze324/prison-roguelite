@@ -35,11 +35,16 @@ var armor_maximum: int = 0
 var throwable_summary: String = "信号弹 1  烟雾弹 1  手雷 1  地雷 1"
 var quick_slot_counts: Array[int] = [0, 0, 0, 0]
 var selected_quick_slot: int = 0
+var weapon_one_icon: Texture2D
+var weapon_two_icon: Texture2D
+var current_weapon_slot: int = 0
+var reload_ratio: float = 0.0
 var coins: int = 0
 var skill_points: int = 0
 var inventory_open: bool = false
 var damage_flash_remaining: float = 0.0
 var parry_flash_remaining: float = 0.0
+var boss_alert_remaining: float = 0.0
 var _player: Player
 var screen_phase: String = "菜单"
 
@@ -51,8 +56,11 @@ func _ready() -> void:
 	EventBus.player_parried.connect(_on_player_parried)
 	queue_redraw()
 
-func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("inventory") and screen_phase == "战斗":
+func _input(event: InputEvent) -> void:
+	var inventory_pressed: bool = event.is_action_pressed("inventory")
+	if event is InputEventKey and event.is_pressed() and not event.is_echo():
+		inventory_pressed = inventory_pressed or (event as InputEventKey).physical_keycode == KEY_TAB
+	if inventory_pressed and (screen_phase == "战斗" or inventory_open):
 		inventory_open = not inventory_open
 		get_tree().paused = inventory_open
 		queue_redraw()
@@ -112,7 +120,11 @@ func set_data(
 	current_quick_slot_counts: Array[int],
 	current_selected_quick_slot: int,
 	meta_coins: int,
-	meta_skill_points: int
+	meta_skill_points: int,
+	current_weapon_texture: Texture2D = null,
+	secondary_weapon_texture: Texture2D = null,
+	weapon_slot: int = 0,
+	current_reload_ratio: float = 0.0
 ) -> void:
 	health = current_health
 	max_health = maximum_health
@@ -136,6 +148,10 @@ func set_data(
 	throwable_summary = _translate_throwables(throwables)
 	quick_slot_counts = current_quick_slot_counts.duplicate()
 	selected_quick_slot = current_selected_quick_slot
+	weapon_one_icon = current_weapon_texture
+	weapon_two_icon = secondary_weapon_texture
+	current_weapon_slot = weapon_slot
+	reload_ratio = current_reload_ratio
 	coins = meta_coins
 	skill_points = meta_skill_points
 	queue_redraw()
@@ -143,6 +159,7 @@ func set_data(
 func _process(delta: float) -> void:
 	damage_flash_remaining = maxf(damage_flash_remaining - delta, 0.0)
 	parry_flash_remaining = maxf(parry_flash_remaining - delta, 0.0)
+	boss_alert_remaining = maxf(boss_alert_remaining - delta, 0.0)
 	queue_redraw()
 
 func _draw() -> void:
@@ -180,7 +197,7 @@ func _draw_combat_hud(font: Font, screen: Vector2, noise_total: float) -> void:
 	_draw_label(font, status_rect.position + Vector2(254.0, 176.0), "技能点 %d" % skill_points, 11, PURPLE)
 
 	var threat_rect: Rect2 = Rect2(screen.x - 278.0, 18.0, 260.0, 184.0)
-	_draw_card(threat_rect, RED, 0.94)
+	_draw_card(threat_rect, AMBER if noise_total > 50.0 else MINT, 0.94)
 	_draw_label(font, threat_rect.position + Vector2(16.0, 25.0), "威胁监测", 17, INK)
 	_draw_label(font, threat_rect.position + Vector2(16.0, 49.0), "噪声总量", 11, MUTED)
 	var noise_color: Color = MINT if noise_total <= 50.0 else AMBER if noise_total <= 120.0 else RED
@@ -198,10 +215,10 @@ func _draw_combat_hud(font: Font, screen: Vector2, noise_total: float) -> void:
 	var event_rect: Rect2 = Rect2(18.0, screen.y - 78.0, screen.x - 36.0, 32.0)
 	_draw_card(event_rect, Color("60747B"), 0.9)
 	_draw_label(font, event_rect.position + Vector2(12.0, 21.0), "事件  /  " + event_text, 12, INK)
-	_draw_label(font, Vector2(20.0, screen.y - 24.0), "WASD 移动   Shift 奔跑   空格 冲刺   鼠标左键 射击   R 换弹   鼠标右键 瞄准/格挡   Q 治疗   E 互动   Tab 背包", 11, MUTED)
+	_draw_label(font, Vector2(20.0, screen.y - 24.0), "WASD 移动   Shift 奔跑   空格 冲刺   鼠标左键 射击   R 换弹   鼠标右键 瞄准/格挡   1/2 武器   3-6 蓄力投掷   Q 治疗   E 互动   Tab 背包", 11, MUTED)
 	_draw_quickbar(font, screen)
-	if noise_total >= 121.0:
-		var edge_alpha: float = clampf((noise_total - 120.0) / 80.0, 0.12, 0.4)
+	if boss_alert_remaining > 0.0:
+		var edge_alpha: float = 0.16 + sin(Time.get_ticks_msec() * 0.012) * 0.07
 		draw_rect(Rect2(0.0, 0.0, screen.x, 10.0), Color(RED, edge_alpha), true)
 		draw_rect(Rect2(0.0, screen.y - 10.0, screen.x, 10.0), Color(RED, edge_alpha), true)
 		draw_rect(Rect2(0.0, 0.0, 10.0, screen.y), Color(RED, edge_alpha), true)
@@ -226,23 +243,45 @@ func _draw_aim_reticle() -> void:
 		draw_arc(cursor, radius, 0.0, TAU, 24, Color(color, 0.75), 1.5)
 
 func _draw_quickbar(font: Font, screen: Vector2) -> void:
-	var slot_size: float = 58.0
+	var slot_size: float = 56.0
 	var gap: float = 8.0
-	var total_width: float = slot_size * 4.0 + gap * 3.0
+	var total_width: float = slot_size * 6.0 + gap * 5.0
 	var start_x: float = (screen.x - total_width) * 0.5
 	var y: float = screen.y - 156.0
-	for index in 4:
+	for index in 6:
 		_draw_quick_slot(font, Vector2(start_x + index * (slot_size + gap), y), slot_size, index)
 
 func _draw_quick_slot(font: Font, position: Vector2, slot_size: float, index: int) -> void:
-	var tint: Color = [AMBER, BLUE, RED, PURPLE][index]
-	var outline: Color = tint if index == selected_quick_slot else Color("53636B")
+	var is_weapon_slot: bool = index < 2
+	var tint: Color = [AMBER, BLUE, RED, PURPLE, Color("E6D36A"), Color("C47AE8")][index]
+	var selected: bool = current_weapon_slot == index if is_weapon_slot else selected_quick_slot == index - 2
+	var outline: Color = tint if selected else Color("53636B")
 	_draw_card(Rect2(position, Vector2(slot_size, slot_size)), outline, 0.96)
+	_draw_label(font, position + Vector2(7.0, 15.0), str(index + 1), 11, INK)
+	if is_weapon_slot:
+		var icon: Texture2D = weapon_one_icon if index == 0 else weapon_two_icon
+		if icon != null:
+			draw_texture_rect(icon, Rect2(position + Vector2(9.0, 18.0), Vector2(slot_size - 18.0, 28.0)), false, Color.WHITE)
+		else:
+			draw_circle(position + Vector2(slot_size * 0.5, slot_size * 0.5), 11.0, Color(tint, 0.18))
+			_draw_label(font, position + Vector2(21.0, 40.0), "武器", 9, tint)
+		if selected and reload_ratio > 0.0:
+			_draw_reload_overlay(position, slot_size, reload_ratio)
+		return
 	draw_circle(position + Vector2(slot_size * 0.5, slot_size * 0.5), 13.0, Color(tint, 0.18))
 	draw_circle(position + Vector2(slot_size * 0.5, slot_size * 0.5), 7.0, tint)
-	_draw_label(font, position + Vector2(7.0, 15.0), str(index + 3), 11, INK)
-	var count: int = quick_slot_counts[index] if index < quick_slot_counts.size() else 0
+	var count_index: int = index - 2
+	var count: int = quick_slot_counts[count_index] if count_index < quick_slot_counts.size() else 0
 	_draw_label(font, position + Vector2(slot_size - 20.0, slot_size - 8.0), str(count), 11, tint if count > 0 else MUTED)
+
+func _draw_reload_overlay(position: Vector2, slot_size: float, ratio: float) -> void:
+	var center: Vector2 = position + Vector2(slot_size * 0.5, slot_size * 0.5)
+	var points: PackedVector2Array = PackedVector2Array([center])
+	for index in 25:
+		var angle: float = -PI * 0.5 + TAU * ratio * float(index) / 24.0
+		points.append(center + Vector2.from_angle(angle) * (slot_size * 0.52))
+	draw_colored_polygon(points, Color(0.18, 0.2, 0.22, 0.72))
+	draw_arc(center, slot_size * 0.46, -PI * 0.5, -PI * 0.5 + TAU * ratio, 24, Color(0.75, 0.78, 0.8, 0.95), 3.0)
 
 func _draw_inventory(font: Font, screen: Vector2) -> void:
 	draw_rect(Rect2(Vector2.ZERO, screen), Color(0.02, 0.04, 0.05, 0.78), true)
@@ -256,9 +295,11 @@ func _draw_inventory(font: Font, screen: Vector2) -> void:
 	_draw_section(font, panel.position + Vector2(438.0, 104.0), "补给品")
 	_draw_inventory_slot(font, panel.position + Vector2(438.0, 122.0), "医疗包", "×%d" % medkits, RED)
 	_draw_inventory_slot(font, panel.position + Vector2(438.0, 204.0), "投掷物", throwable_summary, PURPLE)
-	_draw_section(font, panel.position + Vector2(438.0, 316.0), "快捷栏  /  3  4  5  6")
-	for index in 4:
-		_draw_quick_slot(font, panel.position + Vector2(438.0 + index * 70.0, 334.0), 58.0, index)
+	_draw_section(font, panel.position + Vector2(438.0, 316.0), "快捷栏  /  1  2  3  4  5  6")
+	for index in 6:
+		var row: int = floori(float(index) / 3.0)
+		var column: int = index % 3
+		_draw_quick_slot(font, panel.position + Vector2(438.0 + column * 70.0, 334.0 + row * 70.0), 58.0, index)
 	_draw_label(font, panel.position + Vector2(36.0, 500.0), "硬币 %d     技能点 %d" % [coins, skill_points], 13, AMBER)
 
 func _draw_inventory_slot(font: Font, position: Vector2, slot_name: String, value: String, tint: Color) -> void:
@@ -379,3 +420,7 @@ func _on_damage_feedback(_target: Node2D, _amount: float, _position: Vector2, is
 
 func _on_player_parried(_attacker: Node2D) -> void:
 	parry_flash_remaining = 0.28
+
+func flash_boss_alert(duration: float = 1.4) -> void:
+	boss_alert_remaining = maxf(boss_alert_remaining, duration)
+	queue_redraw()

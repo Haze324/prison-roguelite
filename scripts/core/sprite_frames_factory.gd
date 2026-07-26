@@ -39,6 +39,7 @@ static func ensure_player_action_animations(frames: SpriteFrames, base_path: Str
 	_add_animation_if_missing(frames, "parry", base_path + "dash.png", 8, 18.0, false)
 	_add_animation_if_missing(frames, "perfect_parry", base_path + "dash.png", 8, 22.0, false)
 	_add_animation_if_missing(frames, "hurt", base_path + "idle.png", 8, 20.0, false)
+	_add_animation_if_missing(frames, "melee_swing", base_path + "dash.png", 8, 24.0, false)
 
 static func _add_animation_if_missing(frames: SpriteFrames, animation_name: String, path: String, frame_count: int, fps: float, loop: bool) -> void:
 	if not frames.has_animation(animation_name):

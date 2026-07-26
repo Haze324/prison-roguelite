@@ -10,6 +10,12 @@ extends Resource
 ## 武器图像。
 @export var icon: Texture2D
 
+## 运行时处理后的显示图标，不序列化到资源文件。
+var display_icon: Texture2D
+
+## 挂载到角色手部时的显示缩放。
+@export var visual_scale: float = 0.8
+
 ## 单发基础伤害，后续由伤害管线读取。
 @export var damage: float = 15.0
 

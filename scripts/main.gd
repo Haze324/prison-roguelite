@@ -154,7 +154,11 @@ func _update_hud() -> void:
 		player.get_quick_slot_counts(),
 		player.selected_quick_slot,
 		MetaProgression.coins,
-		MetaProgression.skill_points
+		MetaProgression.skill_points,
+		player.get_weapon_display_icon(player.current_weapon_index),
+		player.get_weapon_display_icon(1),
+		player.current_weapon_index,
+		player.get_reload_ratio()
 	)
 
 func _on_shot_fired(weapon_data: WeaponData, position: Vector2, direction: Vector2) -> void:
@@ -179,10 +183,10 @@ func _on_shot_fired(weapon_data: WeaponData, position: Vector2, direction: Vecto
 	EventBus.noise_emitted.emit(shot_noise, position, player)
 	_last_event = "开火：%s（%d 发）" % [weapon_data.weapon_name, pellet_count]
 
-func _on_throwable_thrown(throwable_type: int, position: Vector2, _direction: Vector2, source: Node2D) -> void:
+func _on_throwable_thrown(throwable_type: int, position: Vector2, direction: Vector2, source: Node2D, charge_ratio: float) -> void:
 	var throwable: Throwable = Throwable.new()
 	add_child(throwable)
-	throwable.setup(throwable_type, position, source)
+	throwable.setup(throwable_type, position, source, direction, charge_ratio)
 	_last_event = "已投掷物品：%d" % throwable_type
 
 func _spawn_power_nodes() -> void:
@@ -276,11 +280,13 @@ func _on_boss_awakened(_unused: Node2D) -> void:
 	boss.set_target(player)
 	_boss = boss
 	_last_event = "守卫者已苏醒：活下来并击败它"
+	demo_hud.flash_boss_alert()
 	EventBus.boss_awakened.emit(boss)
 
 func _on_boss_phase_changed(boss: Node2D, phase: int) -> void:
 	if boss == _boss:
 		_last_event = "守卫者进入第 %d 阶段，准备躲避攻击" % phase
+		demo_hud.flash_boss_alert(0.9)
 
 func _on_boss_ability_requested(boss: Node2D, ability_type: int, target_position: Vector2) -> void:
 	if boss != _boss or _run_over:
