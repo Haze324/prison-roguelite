@@ -260,9 +260,9 @@ func update_aim() -> void:
 	weapon_sprite.flip_v = aim.x < 0.0
 	var current_weapon: WeaponData = weapons[current_weapon_index] if current_weapon_index >= 0 and current_weapon_index < weapons.size() else null
 	var is_melee_weapon: bool = current_weapon != null and current_weapon.is_melee
-	weapon_sprite.visible = not is_melee_weapon
+	weapon_sprite.visible = current_weapon != null and not is_melee_weapon
 	if melee_pivot != null:
-		melee_pivot.visible = is_melee_weapon
+		melee_pivot.visible = current_weapon != null and is_melee_weapon
 		melee_pivot.position = weapon_pivot.position
 		var swing_offset: float = 0.0
 		if _melee_swing_remaining > 0.0:
@@ -296,6 +296,8 @@ func shoot() -> void:
 	if weapons.is_empty() or _shoot_cooldown_remaining > 0.0 or is_reloading:
 		return
 	var weapon := weapons[current_weapon_index]
+	if weapon == null:
+		return
 	if weapon.is_melee:
 		attack_melee(weapon)
 		return
@@ -326,9 +328,21 @@ func attack_melee(weapon: WeaponData) -> void:
 
 func equip_weapon(index: int) -> void:
 	if weapons.is_empty():
+		weapon_sprite.texture = null
+		weapon_sprite.visible = false
+		if melee_pivot != null:
+			melee_pivot.visible = false
+		ammo_changed.emit(0, 0)
 		return
 	current_weapon_index = clampi(index, 0, weapons.size() - 1)
 	var weapon := weapons[current_weapon_index]
+	if weapon == null:
+		weapon_sprite.texture = null
+		weapon_sprite.visible = false
+		if melee_pivot != null:
+			melee_pivot.visible = false
+		ammo_changed.emit(0, 0)
+		return
 	is_reloading = false
 	_reload_remaining = 0.0
 	_reload_duration = 0.0
@@ -360,6 +374,8 @@ func reload_weapon() -> void:
 	if weapons.is_empty() or is_reloading:
 		return
 	var weapon := weapons[current_weapon_index]
+	if weapon == null:
+		return
 	var reserve: int = int(ammo_reserves.get(_weapon_key(weapon), weapon.reserve_ammo))
 	if weapon.mag_size <= 0 or current_ammo >= weapon.mag_size or reserve <= 0:
 		return
@@ -375,6 +391,8 @@ func _finish_reload() -> void:
 	if weapons.is_empty():
 		return
 	var weapon: WeaponData = weapons[current_weapon_index]
+	if weapon == null:
+		return
 	var key: int = _weapon_key(weapon)
 	var reserve: int = int(ammo_reserves.get(key, weapon.reserve_ammo))
 	var needed: int = weapon.mag_size - current_ammo
@@ -719,9 +737,8 @@ func move_inventory_item(source_id: String, target_id: String) -> bool:
 			backpack_items[target_index] = source_record
 		return true
 	if target_id.begins_with("backpack_"):
-		# 武器槽的清空需要同步当前武器、弹药字典和快捷栏；在背包数据模型重构前禁止直接移动，避免产生重复武器。
 		if source_id.begins_with("weapon_"):
-			return false
+			return _move_weapon_to_backpack(source_id, target_id)
 		var equipment_target_index: int = int(target_id.trim_prefix("backpack_"))
 		if equipment_target_index < 0 or equipment_target_index >= backpack_capacity:
 			return false
@@ -780,6 +797,38 @@ func _set_backpack_slot(index: int, record: Dictionary) -> void:
 	while backpack_items.size() <= index:
 		backpack_items.append({})
 	backpack_items[index] = record
+
+func _move_weapon_to_backpack(source_id: String, target_id: String) -> bool:
+	var source_index: int = int(source_id.trim_prefix("weapon_")) - 1
+	var target_index: int = int(target_id.trim_prefix("backpack_"))
+	if source_index < 0 or source_index >= weapons.size() or target_index < 0 or target_index >= backpack_capacity:
+		return false
+	var source_record: Dictionary = get_inventory_record(source_id)
+	if source_record.is_empty() or int(source_record.get("count", 0)) <= 0:
+		return false
+	var target_record: Dictionary = get_inventory_record(target_id)
+	if not target_record.is_empty() and int(target_record.get("count", 0)) > 0 and String(target_record.get("kind", "")) != "weapon":
+		return false
+	_set_backpack_slot(target_index, source_record)
+	if target_record.is_empty() or int(target_record.get("count", 0)) <= 0:
+		_remove_weapon_slot(source_index)
+	else:
+		_apply_equipment_record("weapon_%d" % (source_index + 1), target_record)
+	return true
+
+func _remove_weapon_slot(index: int) -> void:
+	if index < 0 or index >= weapons.size():
+		return
+	weapons.remove_at(index)
+	if weapons.is_empty():
+		current_weapon_index = 0
+		equip_weapon(0)
+		return
+	if current_weapon_index > index:
+		current_weapon_index -= 1
+	elif current_weapon_index == index:
+		current_weapon_index = mini(current_weapon_index, weapons.size() - 1)
+	equip_weapon(current_weapon_index)
 
 func _inventory_slot_accepts(slot_id: String, record: Dictionary) -> bool:
 	var kind: String = String(record.get("kind", ""))
