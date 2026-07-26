@@ -67,7 +67,8 @@ func _draw() -> void:
 
 func _draw_wall(rect: Rect2) -> void:
 	var colors: Array[Color] = [Color("34454B"), Color("3D414D"), Color("4A3D42")]
-	var accent: Color = [Color("6C8A86"), Color("7D7886"), Color("8C6B67")][variant % 3]
+	var accents: Array[Color] = [Color("6C8A86"), Color("7D7886"), Color("8C6B67")]
+	var accent: Color = accents[variant % accents.size()]
 	draw_rect(rect.grow(5.0), Color(0.0, 0.0, 0.0, 0.45), true)
 	draw_rect(rect, colors[variant % 3], true)
 	draw_rect(rect, Color("111A20"), false, 2.0)
