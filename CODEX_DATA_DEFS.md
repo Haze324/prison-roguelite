@@ -63,6 +63,9 @@ enum ReloadMode { MAGAZINE = 0, SINGLE = 1, NONE = 2 }
 # --- 武器类型 ---
 enum WeaponType { PISTOL = 0, SHOTGUN = 1, MELEE = 2, RIFLE = 3 }
 
+# --- 防具部位 ---
+enum ArmorSlot { HEAD = 0, HANDS = 1, BODY = 2 }
+
 # --- 投掷物类型 ---
 enum ThrowableType { FLARE = 0, SMOKE = 1, GRENADE = 2, MINE = 3 }
 
@@ -72,6 +75,38 @@ enum LevelTheme { BIOHAZARD = 0, PLANT = 1 }
 # --- 噪声区间 ---
 enum NoiseZone { GREEN = 0, YELLOW = 1, RED = 2 }
 ```
+
+---
+
+## 背包与装备数据模型（2026-07-26 决策）
+
+装备栏固定使用以下槽位 ID：
+
+```text
+armor_head       # 头部防具
+armor_hands      # 手部防具
+armor_body       # 身体防具
+weapon_1         # 武器 1
+weapon_2         # 武器 2
+consumable       # 消耗品，最多一种类型
+throwable_1      # 投掷物 1
+throwable_2      # 投掷物 2
+```
+
+背包栏使用可配置容量的 `ItemStack` 网格：
+
+```text
+ItemStack {
+    item_data: WeaponData | ArmorData | ConsumableData
+    quantity: int
+    source_slot: String
+}
+```
+
+- 武器、防具数量固定为 1，不可堆叠。
+- 消耗品和投掷物按同类型数据堆叠。
+- 装备栏与背包栏必须使用同一套物品数据引用，拖拽只改变位置和装备状态，不复制数据。
+- 背包容量、初始物品和最大堆叠数由 `.tres` 或背包配置资源管理。
 
 ---
 
@@ -289,8 +324,8 @@ extends Resource
 ## 防具名称
 @export var armor_name: String = ""
 
-## 装备部位：0=头 1=胸 2=腿
-@export var slot: int = 0
+## 装备部位：0=头 1=手 2=身体
+@export var slot: int = GameEnums.ArmorSlot.BODY
 
 ## 减伤比例（0.0-1.0），命中该部位时 damage × (1-DR)
 @export_range(0.0, 1.0) var damage_reduction: float = 0.3
