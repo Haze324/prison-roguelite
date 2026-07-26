@@ -503,7 +503,7 @@ func get_weapon_display_icon(index: int) -> Texture2D:
 	if not weapon.icon.resource_path.to_lower().contains("crowbar .png"):
 		weapon.display_icon = weapon.icon
 		return weapon.display_icon
-	var image: Image = Image.load_from_file(weapon.icon.resource_path)
+	var image: Image = weapon.icon.get_image()
 	if image == null or image.is_empty():
 		weapon.display_icon = weapon.icon
 		return weapon.display_icon

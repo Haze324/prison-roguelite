@@ -3,7 +3,7 @@ extends RefCounted
 
 ## 从横向 spritesheet 创建 SpriteFrames。每张图只允许一行动画帧。
 static func build_from_sheet(path: String, frame_count: int, fps: float, loop: bool) -> SpriteFrames:
-	var image: Image = Image.load_from_file(path)
+	var image: Image = _load_image(path)
 	if image == null or image.is_empty():
 		push_error("无法加载 spritesheet: " + path)
 		return null
@@ -56,7 +56,7 @@ static func build_monster_frames(base_path: String, animation_prefix: String) ->
 	return frames
 
 static func _add_animation(frames: SpriteFrames, animation_name: String, path: String, frame_count: int, fps: float, loop: bool) -> void:
-	var image: Image = Image.load_from_file(path)
+	var image: Image = _load_image(path)
 	if image == null or image.is_empty():
 		push_error("无法加载动画素材: " + path)
 		return
@@ -69,3 +69,9 @@ static func _add_animation(frames: SpriteFrames, animation_name: String, path: S
 	for index in frame_count:
 		var region: Image = image.get_region(Rect2i(index * frame_width, 0, frame_width, image.get_height()))
 		frames.add_frame(animation_name, ImageTexture.create_from_image(region), 1.0 / fps)
+
+static func _load_image(path: String) -> Image:
+	var texture: Texture2D = load(path) as Texture2D
+	if texture == null:
+		return null
+	return texture.get_image()
