@@ -998,13 +998,9 @@ func _check_active_slot_input() -> void:
 		select_active_slot(0)
 	elif Input.is_action_just_pressed("weapon_2"):
 		select_active_slot(1)
-	elif Input.is_action_just_pressed("throw_flare"):
+	elif Input.is_action_just_pressed("throw_slot_1"):
 		select_active_slot(4)
-	elif Input.is_action_just_pressed("throw_smoke"):
-		select_active_slot(5)
-	elif Input.is_action_just_pressed("throw_grenade"):
-		select_active_slot(4)
-	elif Input.is_action_just_pressed("throw_mine"):
+	elif Input.is_action_just_pressed("throw_slot_2"):
 		select_active_slot(5)
 
 func throwable_type_for_key(item_key: String) -> int:

@@ -78,7 +78,7 @@ func _input(event: InputEvent) -> void:
 				else:
 					var active_slot: int = _combat_slot_hit_test(mouse_event.position)
 					if active_slot >= 0 and _player != null:
-						_player.select_active_slot(active_slot, true)
+						_player.select_active_slot(_quickbar_logical_slot(active_slot), true)
 						get_viewport().set_input_as_handled()
 			else:
 				if inventory_open:
@@ -264,7 +264,7 @@ func _draw_combat_hud(font: Font, screen: Vector2, noise_total: float) -> void:
 	var event_rect: Rect2 = Rect2(18.0, screen.y - 78.0, screen.x - 36.0, 32.0)
 	_draw_card(event_rect, Color("60747B"), 0.9)
 	_draw_label(font, event_rect.position + Vector2(12.0, 21.0), "事件  /  " + event_text, 12, INK)
-	_draw_label(font, Vector2(20.0, screen.y - 24.0), "WASD 移动   Shift 奔跑   空格 冲刺   鼠标左键 射击/蓄力投掷   R 换弹   鼠标右键 瞄准/格挡   1/2 武器   5/6 投掷物   Q 血瓶   F 消耗品   E 互动   Tab 背包", 11, MUTED)
+	_draw_label(font, Vector2(20.0, screen.y - 24.0), "WASD 移动   Shift 奔跑   空格 冲刺   鼠标左键 射击/蓄力投掷   R 换弹   鼠标右键 瞄准/格挡   1/2 武器   3/4 投掷物   Q 血瓶   F 消耗品   E 互动   Tab 背包", 11, MUTED)
 	_draw_quickbar(font, screen)
 	if boss_alert_remaining > 0.0:
 		var edge_alpha: float = 0.16 + sin(Time.get_ticks_msec() * 0.012) * 0.07
@@ -301,12 +301,14 @@ func _draw_quickbar(font: Font, screen: Vector2) -> void:
 		_draw_quick_slot(font, Vector2(start_x + index * (slot_size + gap), y), slot_size, index)
 
 func _draw_quick_slot(font: Font, position: Vector2, slot_size: float, index: int) -> void:
-	var is_weapon_slot: bool = index < 2
-	var tint: Color = [AMBER, BLUE, RED, PURPLE, Color("E6D36A"), Color("C47AE8")][index]
-	var selected: bool = current_weapon_slot == index if is_weapon_slot else selected_quick_slot == index
+	var logical_slot: int = _quickbar_logical_slot(index)
+	var is_weapon_slot: bool = logical_slot < 2
+	var tint: Color = [AMBER, BLUE, RED, PURPLE, Color("E6D36A"), Color("C47AE8")][logical_slot]
+	var selected: bool = current_weapon_slot == logical_slot if is_weapon_slot else selected_quick_slot == logical_slot
 	var outline: Color = tint if selected else Color("53636B")
 	_draw_card(Rect2(position, Vector2(slot_size, slot_size)), outline, 0.96)
-	_draw_label(font, position + Vector2(7.0, 15.0), str(index + 1), 11, INK)
+	var slot_labels: Array[String] = ["1", "2", "3", "4", "Q", "F"]
+	_draw_label(font, position + Vector2(7.0, 15.0), slot_labels[index], 11, INK)
 	if is_weapon_slot:
 		var icon: Texture2D = weapon_one_icon if index == 0 else weapon_two_icon
 		if icon != null:
@@ -317,23 +319,29 @@ func _draw_quick_slot(font: Font, position: Vector2, slot_size: float, index: in
 		if selected and reload_ratio > 0.0:
 			_draw_reload_overlay(position, slot_size, reload_ratio)
 		return
-	var count_index: int = index - 2
+	var count_index: int = logical_slot - 2
 	var count: int = quick_slot_counts[count_index] if count_index < quick_slot_counts.size() else 0
 	var icon_center: Vector2 = position + Vector2(slot_size * 0.5, slot_size * 0.5)
 	draw_circle(icon_center, 13.0, Color(tint, 0.18))
-	if index == 2:
+	if logical_slot == 2:
 		draw_circle(icon_center, 7.0, tint)
 		draw_rect(Rect2(icon_center - Vector2(2.0, 7.0), Vector2(4.0, 14.0)), INK, true)
 		draw_rect(Rect2(icon_center - Vector2(7.0, 2.0), Vector2(14.0, 4.0)), INK, true)
-	elif index == 3:
+	elif logical_slot == 3:
 		_draw_label(font, icon_center + Vector2(-5.0, 5.0), "A", 12, tint)
 	else:
-		var throwable_index: int = index - 4
+		var throwable_index: int = logical_slot - 4
 		var throwable_label: String = "?"
 		if throwable_index >= 0 and throwable_index < throwable_slot_names.size():
 			throwable_label = throwable_slot_names[throwable_index].substr(0, 1)
 		_draw_label(font, icon_center + Vector2(-5.0, 5.0), throwable_label, 12, tint)
 	_draw_label(font, position + Vector2(slot_size - 20.0, slot_size - 8.0), str(count), 11, tint if count > 0 else MUTED)
+
+func _quickbar_logical_slot(visual_index: int) -> int:
+	var visual_order: Array[int] = [0, 1, 4, 5, 2, 3]
+	if visual_index < 0 or visual_index >= visual_order.size():
+		return -1
+	return visual_order[visual_index]
 
 func _draw_reload_overlay(position: Vector2, slot_size: float, ratio: float) -> void:
 	var center: Vector2 = position + Vector2(slot_size * 0.5, slot_size * 0.5)
