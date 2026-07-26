@@ -45,7 +45,6 @@ var coins: int = 0
 var skill_points: int = 0
 var inventory_open: bool = false
 var inventory_drag_source: String = ""
-var inventory_drag_position: Vector2 = Vector2.ZERO
 var damage_flash_remaining: float = 0.0
 var parry_flash_remaining: float = 0.0
 var boss_alert_remaining: float = 0.0
@@ -76,7 +75,6 @@ func _input(event: InputEvent) -> void:
 			if mouse_event.pressed:
 				if inventory_open:
 					inventory_drag_source = _inventory_hit_test(mouse_event.position)
-					inventory_drag_position = mouse_event.position
 				else:
 					var active_slot: int = _combat_slot_hit_test(mouse_event.position)
 					if active_slot >= 0 and _player != null:
@@ -350,18 +348,13 @@ func _draw_inventory(font: Font, screen: Vector2) -> void:
 		var column: int = index % 3
 		var bag_position: Vector2 = panel.position + Vector2(438.0 + column * 108.0, 384.0 + row * 72.0)
 		var bag_record: Dictionary = _player.get_inventory_record("backpack_%d" % index) if _player != null else {}
-		_draw_compact_inventory_slot(font, bag_position, index, _inventory_record_label(bag_record), Color("C47AE8"))
+		_draw_compact_inventory_slot(font, bag_position, index, bag_record, Color("C47AE8"))
 	_draw_label(font, panel.position + Vector2(36.0, 540.0), "硬币 %d     技能点 %d     拖拽道具可交换或放回背包" % [coins, skill_points], 13, AMBER)
-	if inventory_drag_source != "":
-		var hover_slot: String = _inventory_hit_test(get_viewport().get_mouse_position())
-		var hover_rect: Rect2 = _inventory_rect(panel, hover_slot)
-		if not hover_rect.has_area():
-			hover_rect = Rect2()
-		else:
-			draw_rect(hover_rect, Color(AMBER, 0.16), true)
-			draw_rect(hover_rect, AMBER, false, 2.0)
-		_draw_card(Rect2(inventory_drag_position - Vector2(72.0, 24.0), Vector2(144.0, 34.0)), AMBER, 0.96)
-		_draw_label(font, inventory_drag_position + Vector2(-60.0, 6.0), "拖动中：松开装备", 11, INK)
+	var hover_slot: String = _inventory_hit_test(get_viewport().get_mouse_position())
+	if hover_slot.begins_with("backpack_") and _player != null:
+		var hover_record: Dictionary = _player.get_inventory_record(hover_slot)
+		if not hover_record.is_empty() and int(hover_record.get("count", 0)) > 0:
+			_draw_inventory_tooltip(font, get_viewport().get_mouse_position(), hover_record)
 
 func _draw_inventory_slot(font: Font, position: Vector2, slot_name: String, value: String, tint: Color) -> void:
 	_draw_card(Rect2(position, Vector2(340.0, 66.0)), Color("53636B"), 0.76)
@@ -370,13 +363,50 @@ func _draw_inventory_slot(font: Font, position: Vector2, slot_name: String, valu
 	_draw_label(font, position + Vector2(54.0, 27.0), slot_name, 11, MUTED)
 	_draw_label(font, position + Vector2(54.0, 47.0), value, 12, tint)
 
-func _draw_compact_inventory_slot(font: Font, position: Vector2, index: int, value: String, tint: Color) -> void:
+func _draw_compact_inventory_slot(font: Font, position: Vector2, index: int, record: Dictionary, tint: Color) -> void:
 	var rect: Rect2 = Rect2(position, Vector2(100.0, 60.0))
 	_draw_card(rect, Color("53636B"), 0.76)
 	_draw_label(font, position + Vector2(7.0, 14.0), str(index + 1), 10, INK)
-	draw_circle(position + Vector2(28.0, 34.0), 10.0, Color(tint, 0.22))
-	draw_circle(position + Vector2(28.0, 34.0), 5.0, tint)
-	_draw_label(font, position + Vector2(44.0, 39.0), value.substr(0, 7), 10, tint)
+	_draw_item_icon(position + Vector2(50.0, 34.0), record, tint, 20.0)
+	if not record.is_empty():
+		_draw_label(font, position + Vector2(78.0, 53.0), str(int(record.get("count", 0))), 10, tint)
+
+func _draw_item_icon(center: Vector2, record: Dictionary, tint: Color, size: float) -> void:
+	if record.is_empty():
+		draw_circle(center, size * 0.35, Color(tint, 0.12))
+		return
+	var icon: Texture2D = record.get("icon") as Texture2D
+	if icon != null:
+		draw_texture_rect(icon, Rect2(center - Vector2(size, size), Vector2(size * 2.0, size * 2.0)), false, Color.WHITE)
+		return
+	var item_key: String = String(record.get("key", ""))
+	var item_kind: String = String(record.get("kind", ""))
+	var item_color: Color = tint
+	if item_key == "ammo_box":
+		item_color = BLUE
+		draw_rect(Rect2(center - Vector2(size * 0.7, size * 0.55), Vector2(size * 1.4, size * 1.1)), Color(item_color, 0.25), true)
+		draw_rect(Rect2(center - Vector2(size * 0.7, size * 0.55), Vector2(size * 1.4, size * 1.1)), item_color, false, 2.0)
+		draw_line(center - Vector2(size * 0.45, 0.0), center + Vector2(size * 0.45, 0.0), item_color, 2.0)
+	elif item_key == "adrenaline":
+		item_color = AMBER
+		var lightning: PackedVector2Array = PackedVector2Array([center + Vector2(-4.0, -size), center + Vector2(size * 0.15, -2.0), center + Vector2(-1.0, -2.0), center + Vector2(5.0, size), center + Vector2(-size * 0.2, 3.0), center + Vector2(1.0, 3.0)])
+		draw_colored_polygon(lightning, item_color)
+	elif item_kind == "healing" or item_key == "medkit":
+		item_color = RED
+		draw_circle(center, size * 0.72, Color(item_color, 0.25))
+		draw_rect(Rect2(center - Vector2(3.0, size * 0.5), Vector2(6.0, size)), item_color, true)
+		draw_rect(Rect2(center - Vector2(size * 0.5, 3.0), Vector2(size, 6.0)), item_color, true)
+	else:
+		draw_circle(center, size * 0.7, Color(item_color, 0.22))
+		draw_circle(center, size * 0.42, item_color)
+		draw_arc(center, size * 0.85, 0.0, TAU, 18, Color(item_color, 0.8), 2.0)
+
+func _draw_inventory_tooltip(font: Font, mouse_position: Vector2, record: Dictionary) -> void:
+	var label: String = "%s  ×%d" % [String(record.get("name", "物品")), int(record.get("count", 0))]
+	var tooltip_position: Vector2 = mouse_position + Vector2(14.0, 14.0)
+	var tooltip_rect: Rect2 = Rect2(tooltip_position, Vector2(170.0, 32.0))
+	_draw_card(tooltip_rect, MINT, 0.98)
+	_draw_label(font, tooltip_position + Vector2(10.0, 21.0), label, 11, INK)
 
 func _inventory_record_label(record: Dictionary) -> String:
 	if record.is_empty():

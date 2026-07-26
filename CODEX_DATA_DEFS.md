@@ -129,6 +129,9 @@ extends Resource
 ## 武器图标 — 点一下即可换图
 @export var icon: Texture2D
 
+## 近战武器挂载显示缩放，可在对应武器 .tres 中单独调节
+@export var melee_visual_scale: float = 0.08
+
 ## 单发/单颗弹丸伤害（稀有度乘数在管线中另外应用）
 @export var damage: float = 15.0
 

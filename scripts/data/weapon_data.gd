@@ -16,6 +16,9 @@ var display_icon: Texture2D
 ## 挂载到角色手部时的显示缩放。
 @export var visual_scale: float = 0.8
 
+## 近战武器独立显示缩放，允许在该武器 .tres 资源中单独调节。
+@export var melee_visual_scale: float = 0.08
+
 ## 单发基础伤害，后续由伤害管线读取。
 @export var damage: float = 15.0
 

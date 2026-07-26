@@ -198,8 +198,6 @@ func get_move_direction() -> Vector2:
 func apply_normal_movement(direction: Vector2, _delta: float) -> void:
 	if direction.x != 0.0:
 		_last_move_direction = direction
-		_facing_left = direction.x < 0.0
-		body_sprite.flip_h = _facing_left
 	var running: bool = Input.is_action_pressed("run") and direction != Vector2.ZERO
 	var movement_speed: float = config.run_speed if running else config.move_speed
 	if is_aiming:
@@ -229,8 +227,6 @@ func begin_dash() -> void:
 		_dash_direction = Vector2.RIGHT
 	if _dash_direction.x != 0.0:
 		_last_move_direction = _dash_direction
-		_facing_left = _dash_direction.x < 0.0
-		body_sprite.flip_h = _facing_left
 	_dash_remaining = config.dash_duration
 	_dash_cooldown_remaining = config.dash_cooldown
 	EventBus.dash_started.emit(global_position, _dash_direction)
@@ -248,13 +244,18 @@ func play_body_animation(animation_name: String) -> void:
 		body_sprite.play(animation_name)
 
 func update_combat_facing() -> void:
-	if _last_move_direction.x != 0.0:
+	var mouse_direction: Vector2 = get_global_mouse_position() - global_position
+	if absf(mouse_direction.x) > 0.001:
+		_facing_left = mouse_direction.x < 0.0
 		body_sprite.flip_h = _facing_left
 
 func update_aim() -> void:
 	var aim: Vector2 = get_global_mouse_position() - global_position
 	if aim == Vector2.ZERO:
 		return
+	if absf(aim.x) > 0.001:
+		_facing_left = aim.x < 0.0
+		body_sprite.flip_h = _facing_left
 	weapon_pivot.position = Vector2(config.hand_offset.x * (1.0 if aim.x >= 0.0 else -1.0), config.hand_offset.y)
 	weapon_pivot.rotation = aim.angle()
 	weapon_sprite.flip_v = aim.x < 0.0
@@ -329,7 +330,7 @@ func equip_weapon(index: int) -> void:
 	weapon_sprite.scale = Vector2.ONE * weapon.visual_scale
 	if melee_sprite != null:
 		melee_sprite.texture = get_weapon_display_icon(current_weapon_index)
-		melee_sprite.scale = Vector2.ONE * weapon.visual_scale
+		melee_sprite.scale = Vector2.ONE * weapon.melee_visual_scale
 	ammo_changed.emit(current_ammo, weapon.mag_size)
 	EventBus.weapon_switched.emit(current_weapon_index, weapon)
 
@@ -660,37 +661,58 @@ func move_inventory_item(source_id: String, target_id: String) -> bool:
 	var source_record: Dictionary = get_inventory_record(source_id)
 	if source_record.is_empty() or int(source_record.get("count", 0)) <= 0:
 		return false
-	if target_id.begins_with("backpack_"):
-		if source_id.begins_with("backpack_"):
-			return false
-		if source_id.begins_with("weapon_"):
-			return false
+	var source_is_backpack: bool = source_id.begins_with("backpack_")
+	var target_is_backpack: bool = target_id.begins_with("backpack_")
+	if source_is_backpack and target_is_backpack:
+		var source_index: int = int(source_id.trim_prefix("backpack_"))
 		var target_index: int = int(target_id.trim_prefix("backpack_"))
-		if target_index < 0 or target_index >= backpack_capacity:
+		if source_index < 0 or target_index < 0 or source_index >= backpack_capacity or target_index >= backpack_capacity:
 			return false
-		var target_bag_record: Dictionary = get_inventory_record(target_id)
-		if not target_bag_record.is_empty() and int(target_bag_record.get("count", 0)) > 0:
+		if source_index == target_index or source_index >= backpack_items.size():
 			return false
 		while backpack_items.size() <= target_index:
 			backpack_items.append({})
-		backpack_items[target_index] = source_record
+		var target_bag_record: Dictionary = backpack_items[target_index]
+		if _inventory_items_stackable(source_record, target_bag_record):
+			target_bag_record["count"] = int(target_bag_record.get("count", 0)) + int(source_record.get("count", 0))
+			backpack_items[target_index] = target_bag_record
+			backpack_items[source_index] = {}
+		else:
+			backpack_items[source_index] = target_bag_record
+			backpack_items[target_index] = source_record
+		return true
+	if target_id.begins_with("backpack_"):
+		if source_id.begins_with("weapon_"):
+			return false
+		var equipment_target_index: int = int(target_id.trim_prefix("backpack_"))
+		if equipment_target_index < 0 or equipment_target_index >= backpack_capacity:
+			return false
+		var target_bag_record: Dictionary = get_inventory_record(target_id)
+		if _inventory_items_stackable(source_record, target_bag_record):
+			target_bag_record["count"] = int(target_bag_record.get("count", 0)) + int(source_record.get("count", 0))
+			_set_backpack_slot(equipment_target_index, target_bag_record)
+			_clear_equipment_slot(source_id)
+			return true
+		if not target_bag_record.is_empty() and int(target_bag_record.get("count", 0)) > 0:
+			return false
+		_set_backpack_slot(equipment_target_index, source_record)
 		_clear_equipment_slot(source_id)
 		return true
 	var target_record: Dictionary = get_inventory_record(target_id)
 	if not _inventory_slot_accepts(target_id, source_record):
 		return false
-	if source_id.begins_with("backpack_"):
-		var source_index: int = int(source_id.trim_prefix("backpack_"))
-		if source_index < 0 or source_index >= backpack_items.size():
+	if source_is_backpack:
+		var equipment_source_index: int = int(source_id.trim_prefix("backpack_"))
+		if equipment_source_index < 0 or equipment_source_index >= backpack_items.size():
 			return false
 		if not target_record.is_empty() and int(target_record.get("count", 0)) > 0:
-			backpack_items[source_index] = target_record
+			backpack_items[equipment_source_index] = target_record
 		else:
-			backpack_items.remove_at(source_index)
+			backpack_items[equipment_source_index] = {}
 		_apply_equipment_record(target_id, source_record)
 		return true
 	if not target_record.is_empty() and int(target_record.get("count", 0)) > 0:
-		if target_id.begins_with("weapon_"):
+		if not _inventory_slot_accepts(source_id, target_record):
 			return false
 		_clear_equipment_slot(target_id)
 		_apply_equipment_record(target_id, source_record)
@@ -699,6 +721,22 @@ func move_inventory_item(source_id: String, target_id: String) -> bool:
 	_clear_equipment_slot(source_id)
 	_apply_equipment_record(target_id, source_record)
 	return true
+
+func _inventory_items_stackable(first: Dictionary, second: Dictionary) -> bool:
+	if first.is_empty() or second.is_empty():
+		return false
+	var first_kind: String = String(first.get("kind", ""))
+	var second_kind: String = String(second.get("kind", ""))
+	var first_key: String = String(first.get("key", ""))
+	var second_key: String = String(second.get("key", ""))
+	return first_kind == second_kind and first_key == second_key and first_kind != "weapon" and first_kind != "armor"
+
+func _set_backpack_slot(index: int, record: Dictionary) -> void:
+	if index < 0 or index >= backpack_capacity:
+		return
+	while backpack_items.size() <= index:
+		backpack_items.append({})
+	backpack_items[index] = record
 
 func _inventory_slot_accepts(slot_id: String, record: Dictionary) -> bool:
 	var kind: String = String(record.get("kind", ""))
@@ -948,12 +986,6 @@ func _draw() -> void:
 		var muzzle: Vector2 = weapon_pivot.position + Vector2.RIGHT.rotated(weapon_pivot.rotation) * 38.0
 		draw_circle(muzzle, 8.0, Color(1.0, 0.82, 0.3, 0.85))
 		draw_line(muzzle, muzzle + Vector2.RIGHT.rotated(weapon_pivot.rotation) * 18.0, Color(1.0, 0.96, 0.7, 0.9), 3.0)
-	if _melee_swing_remaining > 0.0 and melee_pivot != null:
-		var swing_ratio: float = clampf(_melee_swing_remaining / 0.34, 0.0, 1.0)
-		var swing_angle: float = melee_pivot.rotation
-		draw_arc(melee_pivot.position, 56.0, swing_angle - 0.95, swing_angle + 0.95, 24, Color(1.0, 0.82, 0.42, 0.78 * swing_ratio), 5.0)
-		draw_arc(melee_pivot.position, 44.0, swing_angle - 0.72, swing_angle + 0.72, 18, Color(0.85, 0.94, 0.88, 0.52 * swing_ratio), 2.0)
-		draw_line(melee_pivot.position + Vector2.from_angle(swing_angle - 0.95) * 30.0, melee_pivot.position + Vector2.from_angle(swing_angle - 0.95) * 74.0, Color(1.0, 0.75, 0.32, 0.55 * swing_ratio), 3.0)
 	if _throw_charging:
 		var charge_ratio: float = clampf(_throw_charge / _throw_charge_duration, 0.0, 1.0)
 		draw_arc(Vector2.ZERO, 42.0, -PI * 0.5, -PI * 0.5 + TAU * charge_ratio, 28, Color(1.0, 0.72, 0.3, 0.95), 4.0)
