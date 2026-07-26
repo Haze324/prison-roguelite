@@ -14,10 +14,16 @@ func _process(_delta: float) -> void:
 	if Input.is_action_just_pressed("interact"):
 		var can_supply_medkit: bool = player.medkits < player.get_medkit_maximum()
 		var can_supply_ammo: bool = false
-		if not player.weapons.is_empty():
-			var current_weapon: WeaponData = player.weapons[player.current_weapon_index]
-			if current_weapon != null and current_weapon.mag_size > 0:
-				can_supply_ammo = player.current_ammo < current_weapon.mag_size or player.get_current_reserve_ammo() < current_weapon.reserve_ammo
+		for weapon_index in player.weapons.size():
+			var weapon: WeaponData = player.weapons[weapon_index]
+			if weapon == null or weapon.mag_size <= 0:
+				continue
+			var weapon_key: int = weapon.get_instance_id()
+			var magazine: int = int(player.magazine_ammo.get(weapon_key, weapon.mag_size))
+			var reserve: int = int(player.ammo_reserves.get(weapon_key, weapon.reserve_ammo))
+			if magazine < weapon.mag_size or reserve < weapon.reserve_ammo:
+				can_supply_ammo = true
+				break
 		if not can_supply_medkit and not can_supply_ammo:
 			EventBus.consumable_used.emit("商人：当前补给已满")
 			return
