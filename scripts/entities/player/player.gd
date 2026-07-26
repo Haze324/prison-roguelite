@@ -575,7 +575,7 @@ func _setup_flashlight_light() -> void:
 	flashlight_light.shadow_enabled = true
 	var image: Image = Image.create(320, 160, false, Image.FORMAT_RGBA8)
 	for x in 320:
-		var progress: float = float(x) / 319.0
+		var progress: float = clampf((float(x) - 160.0) / 159.0, 0.0, 1.0)
 		var spread: float = lerpf(4.0, 72.0, progress)
 		for y in 160:
 			var distance_from_center: float = absf(float(y) - 80.0)
@@ -585,7 +585,6 @@ func _setup_flashlight_light() -> void:
 	var texture: ImageTexture = ImageTexture.create_from_image(image)
 	flashlight_light.texture = texture
 	flashlight_light.texture_scale = 1.15
-	flashlight_light.texture_offset = Vector2(160.0, 0.0)
 	add_child(flashlight_light)
 
 func _draw() -> void:
