@@ -368,9 +368,9 @@ func _check_weapon_input() -> void:
 	elif Input.is_action_just_pressed("weapon_2"):
 		equip_weapon(1)
 	elif Input.is_action_just_pressed("weapon_next"):
-		equip_weapon((current_weapon_index + 1) % weapons.size())
+		select_active_slot((current_weapon_index + 1) % weapons.size())
 	elif Input.is_action_just_pressed("weapon_prev"):
-		equip_weapon((current_weapon_index - 1 + weapons.size()) % weapons.size())
+		select_active_slot((current_weapon_index - 1 + weapons.size()) % weapons.size())
 
 func reload_weapon() -> void:
 	if weapons.is_empty() or is_reloading:
@@ -862,12 +862,21 @@ func _remove_weapon_slot(index: int) -> void:
 	weapons.remove_at(index)
 	if weapons.is_empty():
 		current_weapon_index = 0
+		if selected_active_slot < 2:
+			selected_active_slot = 0
+			selected_quick_slot = 0
 		equip_weapon(0)
 		return
 	if current_weapon_index > index:
 		current_weapon_index -= 1
 	elif current_weapon_index == index:
 		current_weapon_index = mini(current_weapon_index, weapons.size() - 1)
+	if selected_active_slot < 2:
+		if selected_active_slot == index or selected_active_slot >= weapons.size():
+			selected_active_slot = current_weapon_index
+		elif selected_active_slot > index:
+			selected_active_slot -= 1
+		selected_quick_slot = selected_active_slot
 	equip_weapon(current_weapon_index)
 
 func _inventory_slot_accepts(slot_id: String, record: Dictionary) -> bool:
@@ -971,6 +980,11 @@ func throwable_display_name(item_key: String) -> String:
 
 func select_active_slot(slot_index: int, suppress_primary: bool = false) -> void:
 	if slot_index < 0 or slot_index > 5:
+		return
+	if slot_index < 2 and slot_index >= weapons.size():
+		selected_active_slot = current_weapon_index if not weapons.is_empty() else 0
+		selected_quick_slot = selected_active_slot
+		queue_redraw()
 		return
 	selected_active_slot = slot_index
 	selected_quick_slot = slot_index

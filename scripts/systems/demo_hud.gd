@@ -83,7 +83,7 @@ func _input(event: InputEvent) -> void:
 			else:
 				if inventory_open:
 					var target_slot: String = _inventory_hit_test(mouse_event.position)
-					if inventory_drag_source != "" and _player != null and target_slot != "":
+					if inventory_drag_source != "" and _player != null and is_instance_valid(_player) and target_slot != "":
 						_player.move_inventory_item(inventory_drag_source, target_slot)
 						_refresh_inventory_view_from_player()
 					inventory_drag_source = ""
