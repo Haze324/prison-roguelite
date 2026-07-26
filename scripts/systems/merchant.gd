@@ -16,7 +16,7 @@ func _process(_delta: float) -> void:
 			EventBus.consumable_used.emit("商人：需要 15 枚硬币")
 			return
 		MetaProgression.add_coins(-15)
-		player.medkits = mini(player.medkits + 1, 5)
+		player.medkits = mini(player.medkits + 1, player.get_medkit_maximum())
 		player.current_ammo = player.weapons[player.current_weapon_index].mag_size if not player.weapons.is_empty() else 0
 		if not player.weapons.is_empty():
 			player.ammo_changed.emit(player.current_ammo, player.weapons[player.current_weapon_index].mag_size)

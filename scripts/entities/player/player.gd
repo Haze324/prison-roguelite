@@ -1,6 +1,8 @@
 class_name Player
 extends CharacterBody2D
 
+const MEDKIT_DATA: ConsumableData = preload("res://resources/config/consumable_medkit.tres")
+
 signal state_changed(previous_state: String, next_state: String)
 signal health_changed(current: float, maximum: float)
 signal died
@@ -486,7 +488,7 @@ func use_consumable() -> bool:
 
 func restore_at_safehouse() -> void:
 	current_health = max_health
-	medkits = 3
+	medkits = get_medkit_maximum()
 	if armor != null:
 		armor.repair()
 		EventBus.armor_changed.emit(armor.armor_name, armor.durability, armor.max_durability)
@@ -631,17 +633,21 @@ func add_consumable(item_key: String, amount: int, maximum: int = 5) -> bool:
 	EventBus.consumable_changed.emit(item_key, int(consumable_counts[item_key]), maximum)
 	return true
 
-func add_medkits_to_backpack(amount: int, maximum: int = 5) -> bool:
+func add_medkits_to_backpack(amount: int, maximum: int = 0) -> bool:
 	if amount <= 0:
 		return false
+	var carry_limit: int = maximum if maximum > 0 else get_medkit_maximum()
 	var existing: int = medkits
 	for item_index in backpack_items.size():
 		var item: Dictionary = backpack_items[item_index]
 		if String(item.get("kind", "")) == "healing" and String(item.get("key", "")) == "medkit":
 			existing += int(item.get("count", 0))
-	if existing + amount > maximum:
+	if existing + amount > carry_limit:
 		return false
 	return _add_backpack_item("healing", "medkit", "回复血瓶", amount)
+
+func get_medkit_maximum() -> int:
+	return MEDKIT_DATA.max_carry if MEDKIT_DATA != null else 3
 
 func _add_backpack_item(kind: String, item_key: String, display_name: String, amount: int, extra_record: Dictionary = {}) -> bool:
 	for item_index in backpack_items.size():
