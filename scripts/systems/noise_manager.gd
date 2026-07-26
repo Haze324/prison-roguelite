@@ -25,4 +25,4 @@ func _on_noise_emitted(amount: int, _position: Vector2, _source: Node2D) -> void
     residual_noise += float(amount) * 0.15
     if not boss_threshold_reached and temporary_noise + residual_noise >= boss_threshold:
         boss_threshold_reached = true
-        EventBus.boss_awakened.emit(null)
+        EventBus.boss_spawn_requested.emit()

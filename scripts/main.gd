@@ -55,7 +55,7 @@ func _ready() -> void:
 	EventBus.damage_feedback.connect(_on_damage_feedback)
 	EventBus.player_parried.connect(_on_player_parried)
 	EventBus.consumable_used.connect(_on_consumable_used)
-	EventBus.boss_awakened.connect(_on_boss_awakened)
+	EventBus.boss_spawn_requested.connect(_on_boss_spawn_requested)
 	EventBus.boss_phase_changed.connect(_on_boss_phase_changed)
 	EventBus.boss_ability_requested.connect(_on_boss_ability_requested)
 	EventBus.throwable_thrown.connect(_on_throwable_thrown)
@@ -232,7 +232,7 @@ func _on_power_node_fixed(node: Node2D, _fixed_count: int, _total_count: int) ->
 	_last_event = "电源 %d / %d 已修复，噪声正在扩散" % [_power_fixed, _total_power_nodes]
 	if _power_fixed >= _total_power_nodes:
 		_last_event = "全部电力已恢复，守卫者已经苏醒"
-		EventBus.boss_awakened.emit(null)
+		EventBus.boss_spawn_requested.emit()
 		if _boss_defeated and _exit_gate != null:
 			_exit_gate.set_available(true)
 
@@ -272,7 +272,7 @@ func _on_noise_changed(temporary: float, residual: float) -> void:
 	_temporary_noise = temporary
 	_residual_noise = residual
 
-func _on_boss_awakened(_unused: Node2D) -> void:
+func _on_boss_spawn_requested() -> void:
 	if _boss != null or _run_over:
 		return
 	var boss: Monster = MONSTER_SCENE.instantiate() as Monster

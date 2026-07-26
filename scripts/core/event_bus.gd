@@ -15,6 +15,7 @@ signal damage_feedback(target: Node2D, amount: float, position: Vector2, is_play
 signal player_died()
 signal player_parried(attacker: Node2D)
 signal consumable_used(item_name: String)
+signal boss_spawn_requested()
 signal boss_awakened(boss: Node2D)
 signal boss_phase_changed(boss: Node2D, phase: int)
 signal boss_ability_requested(boss: Node2D, ability_type: int, target_position: Vector2)
