@@ -85,7 +85,9 @@ func _input(event: InputEvent) -> void:
 					var target_slot: String = _inventory_hit_test(mouse_event.position)
 					if inventory_drag_source != "" and _player != null and target_slot != "":
 						_player.move_inventory_item(inventory_drag_source, target_slot)
+						_refresh_inventory_view_from_player()
 					inventory_drag_source = ""
+					queue_redraw()
 					get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("ui_accept") and screen_phase == "菜单":
 		EventBus.run_start_requested.emit()
@@ -187,7 +189,24 @@ func _process(delta: float) -> void:
 	damage_flash_remaining = maxf(damage_flash_remaining - delta, 0.0)
 	parry_flash_remaining = maxf(parry_flash_remaining - delta, 0.0)
 	boss_alert_remaining = maxf(boss_alert_remaining - delta, 0.0)
+	if inventory_open:
+		_refresh_inventory_view_from_player()
 	queue_redraw()
+
+func _refresh_inventory_view_from_player() -> void:
+	if _player == null or not is_instance_valid(_player):
+		return
+	medkits = _player.medkits
+	quick_slot_counts = _player.get_active_slot_counts()
+	consumable_name = _player.consumable_display_name(_player.consumable_slot_item)
+	throwable_slot_names = [
+		_player.throwable_display_name(_player.throwable_slot_items[0]),
+		_player.throwable_display_name(_player.throwable_slot_items[1]),
+	]
+	weapon_one_icon = _player.get_weapon_display_icon(0)
+	weapon_two_icon = _player.get_weapon_display_icon(1)
+	current_weapon_slot = _player.current_weapon_index
+	reload_ratio = _player.get_reload_ratio()
 
 func _draw() -> void:
 	var screen: Vector2 = get_viewport_rect().size
@@ -326,22 +345,23 @@ func _draw_reload_overlay(position: Vector2, slot_size: float, ratio: float) -> 
 	draw_arc(center, slot_size * 0.46, -PI * 0.5, -PI * 0.5 + TAU * ratio, 24, Color(0.75, 0.78, 0.8, 0.95), 3.0)
 
 func _draw_inventory(font: Font, screen: Vector2) -> void:
+	_refresh_inventory_view_from_player()
 	draw_rect(Rect2(Vector2.ZERO, screen), Color(0.02, 0.04, 0.05, 0.78), true)
 	var panel: Rect2 = Rect2((screen - Vector2(820.0, 680.0)) * 0.5, Vector2(820.0, 680.0))
 	_draw_card(panel, MINT, 1.0)
 	_draw_label(font, panel.position + Vector2(32.0, 42.0), "现场背包", 26, INK)
 	_draw_label(font, panel.position + Vector2(33.0, 66.0), "暂停中  /  Tab 关闭", 11, MUTED)
 	_draw_section(font, panel.position + Vector2(34.0, 104.0), "装备栏（拖动道具装备 / 卸下）")
-	_draw_inventory_slot(font, panel.position + Vector2(34.0, 122.0), "头部防具", "空", BLUE)
-	_draw_inventory_slot(font, panel.position + Vector2(34.0, 196.0), "手部防具", "空", BLUE)
-	_draw_inventory_slot(font, panel.position + Vector2(34.0, 270.0), "身体防具", "已装备", BLUE)
-	_draw_inventory_slot(font, panel.position + Vector2(34.0, 344.0), "武器 1", _weapon_label(0), AMBER)
-	_draw_inventory_slot(font, panel.position + Vector2(34.0, 418.0), "武器 2", _weapon_label(1), BLUE)
-	_draw_inventory_slot(font, panel.position + Vector2(34.0, 492.0), "回复血瓶  Q", "×%d" % medkits, RED)
+	_draw_inventory_slot(font, panel.position + Vector2(34.0, 122.0), "头部防具", _player.get_inventory_record("armor_head") if _player != null else {}, BLUE)
+	_draw_inventory_slot(font, panel.position + Vector2(34.0, 196.0), "手部防具", _player.get_inventory_record("armor_hands") if _player != null else {}, BLUE)
+	_draw_inventory_slot(font, panel.position + Vector2(34.0, 270.0), "身体防具", _player.get_inventory_record("armor_body") if _player != null else {}, BLUE)
+	_draw_inventory_slot(font, panel.position + Vector2(34.0, 344.0), "武器 1", _player.get_inventory_record("weapon_1") if _player != null else {}, AMBER)
+	_draw_inventory_slot(font, panel.position + Vector2(34.0, 418.0), "武器 2", _player.get_inventory_record("weapon_2") if _player != null else {}, BLUE)
+	_draw_inventory_slot(font, panel.position + Vector2(34.0, 492.0), "回复血瓶  Q", _player.get_inventory_record("healing") if _player != null else {}, RED)
 	_draw_section(font, panel.position + Vector2(438.0, 104.0), "背包栏（拖动到装备槽）")
-	_draw_inventory_slot(font, panel.position + Vector2(438.0, 122.0), "消耗品  F", "%s ×%d" % [consumable_name, quick_slot_counts[1] if quick_slot_counts.size() > 1 else 0], PURPLE)
-	_draw_inventory_slot(font, panel.position + Vector2(438.0, 196.0), "投掷物 1", "%s ×%d" % [throwable_slot_names[0], quick_slot_counts[2] if quick_slot_counts.size() > 2 else 0], AMBER)
-	_draw_inventory_slot(font, panel.position + Vector2(438.0, 270.0), "投掷物 2", "%s ×%d" % [throwable_slot_names[1], quick_slot_counts[3] if quick_slot_counts.size() > 3 else 0], PURPLE)
+	_draw_inventory_slot(font, panel.position + Vector2(438.0, 122.0), "消耗品  F", _player.get_inventory_record("consumable") if _player != null else {}, PURPLE)
+	_draw_inventory_slot(font, panel.position + Vector2(438.0, 196.0), "投掷物 1", _player.get_inventory_record("throwable_1") if _player != null else {}, AMBER)
+	_draw_inventory_slot(font, panel.position + Vector2(438.0, 270.0), "投掷物 2", _player.get_inventory_record("throwable_2") if _player != null else {}, PURPLE)
 	_draw_label(font, panel.position + Vector2(438.0, 366.0), "背包物品  /  网格容量 12", 13, MINT)
 	for index in 12:
 		var row: int = floori(float(index) / 4.0)
@@ -356,11 +376,11 @@ func _draw_inventory(font: Font, screen: Vector2) -> void:
 		if not hover_record.is_empty() and int(hover_record.get("count", 0)) > 0:
 			_draw_inventory_tooltip(font, get_viewport().get_mouse_position(), hover_record)
 
-func _draw_inventory_slot(font: Font, position: Vector2, slot_name: String, value: String, tint: Color) -> void:
+func _draw_inventory_slot(font: Font, position: Vector2, slot_name: String, record: Dictionary, tint: Color) -> void:
 	_draw_card(Rect2(position, Vector2(340.0, 66.0)), Color("53636B"), 0.76)
-	draw_circle(position + Vector2(28.0, 33.0), 12.0, Color(tint, 0.22))
-	draw_circle(position + Vector2(28.0, 33.0), 6.0, tint)
+	_draw_item_icon(position + Vector2(28.0, 33.0), record, tint, 17.0)
 	_draw_label(font, position + Vector2(54.0, 27.0), slot_name, 11, MUTED)
+	var value: String = "空槽" if _is_empty_inventory_record(record) else "×%d" % int(record.get("count", 0))
 	_draw_label(font, position + Vector2(54.0, 47.0), value, 12, tint)
 
 func _draw_compact_inventory_slot(font: Font, position: Vector2, index: int, record: Dictionary, tint: Color) -> void:
@@ -372,8 +392,12 @@ func _draw_compact_inventory_slot(font: Font, position: Vector2, index: int, rec
 		_draw_label(font, position + Vector2(56.0, 53.0), str(int(record.get("count", 0))), 10, tint)
 
 func _draw_item_icon(center: Vector2, record: Dictionary, tint: Color, size: float) -> void:
-	if record.is_empty():
-		draw_circle(center, size * 0.35, Color(tint, 0.12))
+	if _is_empty_inventory_record(record):
+		var empty_rect: Rect2 = Rect2(center - Vector2(size * 0.58, size * 0.58), Vector2(size * 1.16, size * 1.16))
+		draw_rect(empty_rect, Color(tint, 0.08), true)
+		draw_rect(empty_rect, Color(tint, 0.45), false, 1.5)
+		draw_line(empty_rect.position + Vector2(4.0, 4.0), empty_rect.end - Vector2(4.0, 4.0), Color(tint, 0.42), 1.0)
+		draw_line(Vector2(empty_rect.end.x - 4.0, empty_rect.position.y + 4.0), Vector2(empty_rect.position.x + 4.0, empty_rect.end.y - 4.0), Color(tint, 0.42), 1.0)
 		return
 	var icon: Texture2D = record.get("icon") as Texture2D
 	if icon != null:
@@ -400,6 +424,9 @@ func _draw_item_icon(center: Vector2, record: Dictionary, tint: Color, size: flo
 		draw_circle(center, size * 0.7, Color(item_color, 0.22))
 		draw_circle(center, size * 0.42, item_color)
 		draw_arc(center, size * 0.85, 0.0, TAU, 18, Color(item_color, 0.8), 2.0)
+
+func _is_empty_inventory_record(record: Dictionary) -> bool:
+	return record.is_empty() or int(record.get("count", 0)) <= 0
 
 func _draw_inventory_tooltip(font: Font, mouse_position: Vector2, record: Dictionary) -> void:
 	var label: String = "%s  ×%d" % [String(record.get("name", "物品")), int(record.get("count", 0))]

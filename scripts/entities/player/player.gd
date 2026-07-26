@@ -112,7 +112,6 @@ func _ready() -> void:
 		add_child(melee_pivot)
 		melee_sprite = Sprite2D.new()
 		melee_sprite.name = "MeleeSprite"
-		melee_sprite.position = Vector2(24.0, 0.0)
 		melee_pivot.add_child(melee_sprite)
 		melee_sprite.texture = load("res://assets/侧视角/20 melee weapons/20 melee weapons/Crowbar .PNG") as Texture2D
 	if body_sprite.sprite_frames == null:
@@ -271,7 +270,7 @@ func update_aim() -> void:
 			swing_offset = lerpf(-1.15, 1.05, swing_progress)
 		melee_pivot.rotation = aim.angle() + swing_offset
 		if melee_sprite != null:
-			melee_sprite.flip_v = aim.x < 0.0
+			_apply_melee_mount(current_weapon)
 	if flashlight_cone != null:
 		flashlight_cone.position = weapon_pivot.position
 		flashlight_cone.set_direction(aim)
@@ -297,6 +296,9 @@ func shoot() -> void:
 	if weapons.is_empty() or _shoot_cooldown_remaining > 0.0 or is_reloading:
 		return
 	var weapon := weapons[current_weapon_index]
+	if weapon.is_melee:
+		attack_melee(weapon)
+		return
 	if weapon.mag_size > 0 and current_ammo <= 0:
 		reload_weapon()
 		return
@@ -305,13 +307,21 @@ func shoot() -> void:
 		magazine_ammo[_weapon_key(weapon)] = current_ammo
 		ammo_changed.emit(current_ammo, weapon.mag_size)
 	_shoot_cooldown_remaining = weapon.fire_rate
-	if weapon.is_melee:
-		_melee_swing_remaining = minf(weapon.fire_rate * 0.65, 0.34)
-		_start_action_visual("melee_swing", _melee_swing_remaining)
-	else:
-		_muzzle_flash_remaining = 0.08
+	_muzzle_flash_remaining = 0.08
 	queue_redraw()
 	var direction := (get_global_mouse_position() - weapon_pivot.global_position).normalized()
+	EventBus.shot_fired.emit(weapon, weapon_pivot.global_position, direction)
+
+func attack_melee(weapon: WeaponData) -> void:
+	if weapon == null or not weapon.is_melee or is_reloading:
+		return
+	_shoot_cooldown_remaining = weapon.fire_rate
+	_melee_swing_remaining = minf(weapon.fire_rate * 0.65, 0.34)
+	_start_action_visual("melee_swing", _melee_swing_remaining)
+	queue_redraw()
+	var direction: Vector2 = (get_global_mouse_position() - weapon_pivot.global_position).normalized()
+	if direction == Vector2.ZERO:
+		direction = Vector2.LEFT if _facing_left else Vector2.RIGHT
 	EventBus.shot_fired.emit(weapon, weapon_pivot.global_position, direction)
 
 func equip_weapon(index: int) -> void:
@@ -330,7 +340,7 @@ func equip_weapon(index: int) -> void:
 	weapon_sprite.scale = Vector2.ONE * weapon.visual_scale
 	if melee_sprite != null:
 		melee_sprite.texture = get_weapon_display_icon(current_weapon_index)
-		melee_sprite.scale = Vector2.ONE * weapon.melee_visual_scale
+		_apply_melee_mount(weapon)
 	ammo_changed.emit(current_ammo, weapon.mag_size)
 	EventBus.weapon_switched.emit(current_weapon_index, weapon)
 
@@ -544,6 +554,15 @@ func _enqueue_background_pixel(image: Image, point: Vector2i, background: Color,
 
 func _weapon_key(weapon: WeaponData) -> int:
 	return weapon.get_instance_id()
+
+func _apply_melee_mount(weapon: WeaponData) -> void:
+	if melee_sprite == null or weapon == null:
+		return
+	melee_sprite.scale = Vector2.ONE * weapon.melee_visual_scale
+	melee_sprite.rotation = weapon.melee_rotation_offset
+	var scaled_grip_offset: Vector2 = weapon.melee_grip_offset * weapon.melee_visual_scale
+	melee_sprite.position = -scaled_grip_offset.rotated(weapon.melee_rotation_offset)
+	melee_sprite.flip_v = false
 
 func has_skill(skill_name: String) -> bool:
 	return MetaProgression.unlocked_skills.has(skill_name)

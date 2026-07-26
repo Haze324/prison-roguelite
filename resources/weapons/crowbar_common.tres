@@ -1,21 +1,21 @@
-[gd_resource type="Resource" script_class="WeaponData" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="WeaponData" format=3 uid="uid://crjs1bbgu6ahl"]
 
-[ext_resource type="Script" path="res://scripts/data/weapon_data.gd" id="1_weapon"]
-[ext_resource type="Texture2D" path="res://assets/侧视角/20 melee weapons/20 melee weapons/Crowbar .PNG" id="2_icon"]
+[ext_resource type="Script" uid="uid://b3upqojjpxj7m" path="res://scripts/data/weapon_data.gd" id="1_weapon"]
+[ext_resource type="Texture2D" uid="uid://vwq8jd72aq7i" path="res://assets/侧视角/20 melee weapons/20 melee weapons/Crowbar .PNG" id="2_icon"]
 
 [resource]
 script = ExtResource("1_weapon")
 weapon_name = "Crowbar"
+weapon_type = 2
 icon = ExtResource("2_icon")
 visual_scale = 0.14
 melee_visual_scale = 0.065
-weapon_type = 2
+melee_grip_offset = Vector2(224, 358)
+melee_rotation_offset = 2.35
 damage = 28.0
-rarity = 0
 mag_size = 0
 reserve_ammo = 0
 reload_time = 0.0
-pellets = 1
 fire_rate = 0.65
 noise = 12
 spread = 0.0
@@ -24,4 +24,3 @@ range = 78.0
 is_melee = true
 hitbox_angle = 110.0
 hitbox_range = 78.0
-effects = []

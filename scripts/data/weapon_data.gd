@@ -19,6 +19,12 @@ var display_icon: Texture2D
 ## 近战武器独立显示缩放，允许在该武器 .tres 资源中单独调节。
 @export var melee_visual_scale: float = 0.08
 
+## 近战贴图握持端相对贴图中心的像素偏移。通过资源单独校准握持锚点。
+@export var melee_grip_offset: Vector2 = Vector2.ZERO
+
+## 近战贴图自身的基础旋转，用于将武器长轴对齐攻击方向。
+@export var melee_rotation_offset: float = 0.0
+
 ## 单发基础伤害，后续由伤害管线读取。
 @export var damage: float = 15.0
 
