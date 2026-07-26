@@ -88,6 +88,7 @@ armor_hands      # 手部防具
 armor_body       # 身体防具
 weapon_1         # 武器 1
 weapon_2         # 武器 2
+healing          # 回复血瓶，独立回复槽
 consumable       # 消耗品，最多一种类型
 throwable_1      # 投掷物 1
 throwable_2      # 投掷物 2
@@ -104,7 +105,8 @@ ItemStack {
 ```
 
 - 武器、防具数量固定为 1，不可堆叠。
-- 消耗品和投掷物按同类型数据堆叠。
+- 回复血瓶与消耗品分属不同装备槽和使用按键；回复血瓶使用 `Q`，消耗品使用 `F`。
+- 回复血瓶、消耗品和投掷物分别按自身类型数据堆叠，不得跨类别合并。
 - 装备栏与背包栏必须使用同一套物品数据引用，拖拽只改变位置和装备状态，不复制数据。
 - 背包容量、初始物品和最大堆叠数由 `.tres` 或背包配置资源管理。
 
@@ -350,8 +352,10 @@ extends Resource
 ## 消耗品名称
 @export var item_name: String = ""
 
-## 类型：0=弹药箱 1=投掷物 2=医疗 3=其他
+## 类型：0=弹药箱 1=投掷物 2=肾上腺素 3=其他 4=回复血瓶
 @export var item_type: int = 0
+
+## 使用通道：4=healing 槽并由 Q 使用；其余非治疗物品进入 consumable 槽并由 F 使用
 
 ## 携带上限
 @export var max_carry: int = 2
