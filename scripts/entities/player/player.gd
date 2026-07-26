@@ -174,8 +174,10 @@ func _physics_process(delta: float) -> void:
 		EventBus.noise_emitted.emit(2, global_position, self)
 		queue_redraw()
 	if Input.is_action_just_pressed("use_heal"):
+		select_active_slot(2)
 		use_medkit()
 	if Input.is_action_just_pressed("use_consumable"):
+		select_active_slot(3)
 		use_consumable()
 	if _suppress_primary_until_release and not Input.is_action_pressed("shoot"):
 		_suppress_primary_until_release = false
