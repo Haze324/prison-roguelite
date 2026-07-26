@@ -327,7 +327,7 @@ func _draw_reload_overlay(position: Vector2, slot_size: float, ratio: float) -> 
 
 func _draw_inventory(font: Font, screen: Vector2) -> void:
 	draw_rect(Rect2(Vector2.ZERO, screen), Color(0.02, 0.04, 0.05, 0.78), true)
-	var panel: Rect2 = Rect2((screen - Vector2(820.0, 560.0)) * 0.5, Vector2(820.0, 560.0))
+	var panel: Rect2 = Rect2((screen - Vector2(820.0, 680.0)) * 0.5, Vector2(820.0, 680.0))
 	_draw_card(panel, MINT, 1.0)
 	_draw_label(font, panel.position + Vector2(32.0, 42.0), "现场背包", 26, INK)
 	_draw_label(font, panel.position + Vector2(33.0, 66.0), "暂停中  /  Tab 关闭", 11, MUTED)
@@ -343,15 +343,15 @@ func _draw_inventory(font: Font, screen: Vector2) -> void:
 	_draw_inventory_slot(font, panel.position + Vector2(438.0, 196.0), "投掷物 1", "%s ×%d" % [throwable_slot_names[0], quick_slot_counts[2] if quick_slot_counts.size() > 2 else 0], AMBER)
 	_draw_inventory_slot(font, panel.position + Vector2(438.0, 270.0), "投掷物 2", "%s ×%d" % [throwable_slot_names[1], quick_slot_counts[3] if quick_slot_counts.size() > 3 else 0], PURPLE)
 	_draw_label(font, panel.position + Vector2(438.0, 366.0), "背包物品  /  网格容量 12", 13, MINT)
-	for index in 6:
-		var row: int = floori(float(index) / 3.0)
-		var column: int = index % 3
-		var bag_position: Vector2 = panel.position + Vector2(438.0 + column * 108.0, 384.0 + row * 72.0)
+	for index in 12:
+		var row: int = floori(float(index) / 4.0)
+		var column: int = index % 4
+		var bag_position: Vector2 = panel.position + Vector2(438.0 + column * 82.0, 384.0 + row * 72.0)
 		var bag_record: Dictionary = _player.get_inventory_record("backpack_%d" % index) if _player != null else {}
 		_draw_compact_inventory_slot(font, bag_position, index, bag_record, Color("C47AE8"))
-	_draw_label(font, panel.position + Vector2(36.0, 540.0), "硬币 %d     技能点 %d     拖拽道具可交换或放回背包" % [coins, skill_points], 13, AMBER)
+	_draw_label(font, panel.position + Vector2(36.0, 650.0), "硬币 %d     技能点 %d     拖拽道具可交换或放回背包" % [coins, skill_points], 13, AMBER)
 	var hover_slot: String = _inventory_hit_test(get_viewport().get_mouse_position())
-	if hover_slot.begins_with("backpack_") and _player != null:
+	if hover_slot != "" and _player != null:
 		var hover_record: Dictionary = _player.get_inventory_record(hover_slot)
 		if not hover_record.is_empty() and int(hover_record.get("count", 0)) > 0:
 			_draw_inventory_tooltip(font, get_viewport().get_mouse_position(), hover_record)
@@ -364,12 +364,12 @@ func _draw_inventory_slot(font: Font, position: Vector2, slot_name: String, valu
 	_draw_label(font, position + Vector2(54.0, 47.0), value, 12, tint)
 
 func _draw_compact_inventory_slot(font: Font, position: Vector2, index: int, record: Dictionary, tint: Color) -> void:
-	var rect: Rect2 = Rect2(position, Vector2(100.0, 60.0))
+	var rect: Rect2 = Rect2(position, Vector2(78.0, 60.0))
 	_draw_card(rect, Color("53636B"), 0.76)
 	_draw_label(font, position + Vector2(7.0, 14.0), str(index + 1), 10, INK)
-	_draw_item_icon(position + Vector2(50.0, 34.0), record, tint, 20.0)
+	_draw_item_icon(position + Vector2(39.0, 34.0), record, tint, 18.0)
 	if not record.is_empty():
-		_draw_label(font, position + Vector2(78.0, 53.0), str(int(record.get("count", 0))), 10, tint)
+		_draw_label(font, position + Vector2(56.0, 53.0), str(int(record.get("count", 0))), 10, tint)
 
 func _draw_item_icon(center: Vector2, record: Dictionary, tint: Color, size: float) -> void:
 	if record.is_empty():
@@ -430,7 +430,7 @@ func _combat_slot_hit_test(point: Vector2) -> int:
 
 func _inventory_hit_test(point: Vector2) -> String:
 	var screen: Vector2 = get_viewport_rect().size
-	var panel: Rect2 = Rect2((screen - Vector2(820.0, 560.0)) * 0.5, Vector2(820.0, 560.0))
+	var panel: Rect2 = Rect2((screen - Vector2(820.0, 680.0)) * 0.5, Vector2(820.0, 680.0))
 	var left_x: float = panel.position.x + 34.0
 	var right_x: float = panel.position.x + 438.0
 	var left_slots: Array[String] = ["armor_head", "armor_hands", "armor_body", "weapon_1", "weapon_2", "healing"]
@@ -444,10 +444,10 @@ func _inventory_hit_test(point: Vector2) -> String:
 		var right_rect: Rect2 = Rect2(Vector2(right_x, panel.position.y + right_y), Vector2(340.0, 66.0))
 		if right_rect.has_point(point):
 			return right_slots[index]
-	for index in 6:
-		var bag_row: int = floori(float(index) / 3.0)
-		var bag_column: int = index % 3
-		var bag_rect: Rect2 = Rect2(panel.position + Vector2(438.0 + bag_column * 108.0, 384.0 + bag_row * 72.0), Vector2(100.0, 60.0))
+	for index in 12:
+		var bag_row: int = floori(float(index) / 4.0)
+		var bag_column: int = index % 4
+		var bag_rect: Rect2 = Rect2(panel.position + Vector2(438.0 + bag_column * 82.0, 384.0 + bag_row * 72.0), Vector2(78.0, 60.0))
 		if bag_rect.has_point(point):
 			return "backpack_%d" % index
 	return ""
@@ -462,10 +462,10 @@ func _inventory_rect(panel: Rect2, slot_id: String) -> Rect2:
 	if right_index >= 0:
 		return Rect2(panel.position + Vector2(438.0, 122.0 + right_index * 74.0), Vector2(340.0, 66.0))
 	var bag_index: int = int(slot_id.trim_prefix("backpack_")) if slot_id.begins_with("backpack_") else -1
-	if bag_index >= 0 and bag_index < 6:
-		var bag_row: int = floori(float(bag_index) / 3.0)
-		var bag_column: int = bag_index % 3
-		return Rect2(panel.position + Vector2(438.0 + bag_column * 108.0, 384.0 + bag_row * 72.0), Vector2(100.0, 60.0))
+	if bag_index >= 0 and bag_index < 12:
+		var bag_row: int = floori(float(bag_index) / 4.0)
+		var bag_column: int = bag_index % 4
+		return Rect2(panel.position + Vector2(438.0 + bag_column * 82.0, 384.0 + bag_row * 72.0), Vector2(78.0, 60.0))
 	return Rect2()
 
 func _draw_screen_overlay(font: Font, screen: Vector2) -> void:

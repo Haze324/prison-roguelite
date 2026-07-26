@@ -583,12 +583,13 @@ func add_consumable(item_key: String, amount: int, maximum: int = 5) -> void:
 func _add_backpack_item(kind: String, item_key: String, display_name: String, amount: int) -> void:
 	for item_index in backpack_items.size():
 		var item: Dictionary = backpack_items[item_index]
-		if item.is_empty():
-			backpack_items[item_index] = {"kind": kind, "key": item_key, "name": display_name, "count": amount}
-			return
 		var existing_key: String = String(item.get("key", ""))
-		if existing_key == item_key:
+		if not item.is_empty() and existing_key == item_key:
 			item["count"] = int(item.get("count", 0)) + amount
+			return
+	for item_index in backpack_items.size():
+		if backpack_items[item_index].is_empty():
+			backpack_items[item_index] = {"kind": kind, "key": item_key, "name": display_name, "count": amount}
 			return
 	if backpack_items.size() >= backpack_capacity:
 		return
@@ -682,6 +683,7 @@ func move_inventory_item(source_id: String, target_id: String) -> bool:
 			backpack_items[target_index] = source_record
 		return true
 	if target_id.begins_with("backpack_"):
+		# 武器槽的清空需要同步当前武器、弹药字典和快捷栏；在背包数据模型重构前禁止直接移动，避免产生重复武器。
 		if source_id.begins_with("weapon_"):
 			return false
 		var equipment_target_index: int = int(target_id.trim_prefix("backpack_"))
@@ -694,7 +696,12 @@ func move_inventory_item(source_id: String, target_id: String) -> bool:
 			_clear_equipment_slot(source_id)
 			return true
 		if not target_bag_record.is_empty() and int(target_bag_record.get("count", 0)) > 0:
-			return false
+			if not _inventory_slot_accepts(source_id, target_bag_record):
+				return false
+			_set_backpack_slot(equipment_target_index, source_record)
+			_clear_equipment_slot(source_id)
+			_apply_equipment_record(source_id, target_bag_record)
+			return true
 		_set_backpack_slot(equipment_target_index, source_record)
 		_clear_equipment_slot(source_id)
 		return true
