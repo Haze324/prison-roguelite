@@ -604,20 +604,44 @@ func use_throwable(throwable_type: int, inventory_key: String, charge_ratio: flo
 	EventBus.consumable_changed.emit(inventory_key, count - 1, 1)
 	return true
 
-func add_throwable(throwable_type: int, amount: int, maximum: int) -> void:
+func add_throwable(throwable_type: int, amount: int, maximum: int) -> bool:
+	if amount <= 0:
+		return false
 	var inventory_key: String = throwable_key_for_type(throwable_type)
 	var current: int = int(throwable_counts.get(inventory_key, 0))
-	throwable_counts[inventory_key] = mini(current + amount, maximum)
+	if current + amount > maximum:
+		return false
 	if not throwable_slot_items.has(inventory_key):
-		_add_backpack_item("throwable", inventory_key, throwable_display_name(inventory_key), amount)
+		if not _add_backpack_item("throwable", inventory_key, throwable_display_name(inventory_key), amount):
+			return false
+	throwable_counts[inventory_key] = current + amount
 	EventBus.consumable_changed.emit(inventory_key, int(throwable_counts[inventory_key]), maximum)
+	return true
 
-func add_consumable(item_key: String, amount: int, maximum: int = 5) -> void:
+func add_consumable(item_key: String, amount: int, maximum: int = 5) -> bool:
+	if item_key == "" or amount <= 0:
+		return false
 	var current: int = int(consumable_counts.get(item_key, 0))
-	consumable_counts[item_key] = mini(current + amount, maximum)
+	if current + amount > maximum:
+		return false
 	if item_key != consumable_slot_item:
-		_add_backpack_item("consumable", item_key, consumable_display_name(item_key), amount)
+		if not _add_backpack_item("consumable", item_key, consumable_display_name(item_key), amount):
+			return false
+	consumable_counts[item_key] = current + amount
 	EventBus.consumable_changed.emit(item_key, int(consumable_counts[item_key]), maximum)
+	return true
+
+func add_medkits_to_backpack(amount: int, maximum: int = 5) -> bool:
+	if amount <= 0:
+		return false
+	var existing: int = medkits
+	for item_index in backpack_items.size():
+		var item: Dictionary = backpack_items[item_index]
+		if String(item.get("kind", "")) == "healing" and String(item.get("key", "")) == "medkit":
+			existing += int(item.get("count", 0))
+	if existing + amount > maximum:
+		return false
+	return _add_backpack_item("healing", "medkit", "回复血瓶", amount)
 
 func _add_backpack_item(kind: String, item_key: String, display_name: String, amount: int, extra_record: Dictionary = {}) -> bool:
 	for item_index in backpack_items.size():
@@ -642,11 +666,6 @@ func _add_backpack_item(kind: String, item_key: String, display_name: String, am
 func add_weapon_to_inventory(weapon_data: WeaponData) -> bool:
 	if weapon_data == null:
 		return false
-	if weapons.size() < 2:
-		weapons.append(weapon_data)
-		register_weapon(weapon_data)
-		equip_weapon(weapons.size() - 1)
-		return true
 	var item_key: String = "weapon_pickup_%d" % weapon_data.get_instance_id()
 	var display_icon: Texture2D = weapon_data.display_icon if weapon_data.display_icon != null else weapon_data.icon
 	return _add_backpack_item("weapon", item_key, weapon_data.weapon_name, 1, {"data": weapon_data, "icon": display_icon})
@@ -720,6 +739,25 @@ func move_inventory_item(source_id: String, target_id: String) -> bool:
 		return false
 	var source_is_backpack: bool = source_id.begins_with("backpack_")
 	var target_is_backpack: bool = target_id.begins_with("backpack_")
+	if source_id.begins_with("weapon_") and target_id.begins_with("weapon_"):
+		var source_weapon_index: int = int(source_id.trim_prefix("weapon_")) - 1
+		var target_weapon_index: int = int(target_id.trim_prefix("weapon_")) - 1
+		if source_weapon_index < 0 or source_weapon_index >= weapons.size() or target_weapon_index < 0:
+			return false
+		if target_weapon_index >= weapons.size():
+			# 武器数组保持连续，不能把唯一的武器 1 拖到空的武器 2 后留下隐形空洞。
+			return false
+		var source_weapon: WeaponData = weapons[source_weapon_index]
+		var target_weapon: WeaponData = weapons[target_weapon_index]
+		if source_weapon == null or target_weapon == null:
+			return false
+		weapons[source_weapon_index] = target_weapon
+		weapons[target_weapon_index] = source_weapon
+		register_weapon(source_weapon)
+		register_weapon(target_weapon)
+		if current_weapon_index == source_weapon_index or current_weapon_index == target_weapon_index:
+			equip_weapon(current_weapon_index)
+		return true
 	if source_is_backpack and target_is_backpack:
 		var source_index: int = int(source_id.trim_prefix("backpack_"))
 		var target_index: int = int(target_id.trim_prefix("backpack_"))
@@ -894,11 +932,17 @@ func _apply_equipment_record(slot_id: String, record: Dictionary) -> void:
 		"weapon_1", "weapon_2":
 			var weapon_data: WeaponData = record.get("data") as WeaponData
 			var weapon_index: int = 0 if slot_id == "weapon_1" else 1
-			if weapon_data != null and weapon_index < weapons.size():
+			if weapon_data == null:
+				return
+			if weapon_index == weapons.size() and weapons.size() < 2:
+				weapons.append(weapon_data)
+			elif weapon_index < weapons.size():
 				weapons[weapon_index] = weapon_data
-				register_weapon(weapon_data)
-				if current_weapon_index == weapon_index:
-					equip_weapon(weapon_index)
+			else:
+				return
+			register_weapon(weapon_data)
+			if current_weapon_index == weapon_index:
+				equip_weapon(weapon_index)
 
 func _weapon_inventory_record(index: int) -> Dictionary:
 	if index < 0 or index >= weapons.size() or weapons[index] == null:
