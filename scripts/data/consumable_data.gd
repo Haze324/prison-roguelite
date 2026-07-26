@@ -2,6 +2,7 @@ class_name ConsumableData
 extends Resource
 
 @export var item_name: String = "Medkit"
+@export var item_id: String = "medkit"
 @export var item_type: int = GameEnums.ConsumableType.HEALING
 @export var max_carry: int = 2
 @export var use_noise: int = 0

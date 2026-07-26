@@ -9,18 +9,32 @@ signal ammo_changed(current: int, capacity: int)
 @export var config: PlayerConfig
 @export var weapons: Array[WeaponData] = []
 @export var armor: ArmorData
+@export var armor_head: ArmorData
+@export var armor_hands: ArmorData
+@export var armor_body: ArmorData
 
 var max_health: float = 100.0
 var current_health: float = 100.0
 var armor_reduction: float = 0.15
 var medkits: int = 3
+var consumable_counts: Dictionary = {
+	"ammo_box": 1,
+	"adrenaline": 1,
+}
+var consumable_slot_item: String = "ammo_box"
 var throwable_counts: Dictionary = {
 	"flare": 1,
 	"smoke": 1,
 	"grenade": 1,
 	"mine": 1,
 }
-var quick_slot_items: Array[String] = ["flare", "smoke", "grenade", "mine"]
+var throwable_slot_items: Array[String] = ["flare", "smoke"]
+@export var backpack_capacity: int = 12
+var backpack_items: Array[Dictionary] = [
+	{"kind": "throwable", "key": "grenade", "name": "手雷", "count": 1},
+	{"kind": "throwable", "key": "mine", "name": "地雷", "count": 1},
+]
+var selected_active_slot: int = 0
 var selected_quick_slot: int = 0
 var is_dead: bool = false
 var is_reloading: bool = false
@@ -42,6 +56,8 @@ var _throw_charging: bool = false
 var _throw_slot: int = -1
 var _throw_charge: float = 0.0
 var _throw_charge_duration: float = 0.85
+var _adrenaline_remaining: float = 0.0
+var _suppress_primary_until_release: bool = false
 var _facing_left: bool = false
 var _last_move_direction: Vector2 = Vector2.RIGHT
 var is_aiming: bool = false
@@ -50,6 +66,8 @@ var is_aiming: bool = false
 @onready var shadow: Sprite2D = $Shadow
 @onready var weapon_pivot: Node2D = $WeaponPivot
 @onready var weapon_sprite: Sprite2D = $WeaponPivot/WeaponSprite
+@onready var melee_pivot: Node2D = get_node_or_null("MeleePivot") as Node2D
+@onready var melee_sprite: Sprite2D = get_node_or_null("MeleePivot/MeleeSprite") as Sprite2D
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 @onready var state_machine: StateMachine = $StateMachine
 @onready var camera: Camera2D = get_node_or_null("Camera2D") as Camera2D
@@ -72,15 +90,31 @@ func _ready() -> void:
 		config = PlayerConfig.new()
 	max_health = config.max_health + (20.0 if has_skill("Iron Will") else 0.0)
 	current_health = max_health
+	if armor_body == null:
+		armor_body = armor
+	if armor == null:
+		armor = armor_body
 	if armor != null:
 		armor.repair()
 		armor_reduction = armor.damage_reduction
-	var capsule := CapsuleShape2D.new()
-	capsule.radius = config.collision_radius
-	capsule.height = config.collision_radius * 2.0
-	collision_shape.shape = capsule
-	body_sprite.scale = Vector2.ONE * config.body_scale
+	if collision_shape.shape == null:
+		var capsule: CapsuleShape2D = CapsuleShape2D.new()
+		capsule.radius = config.collision_radius
+		capsule.height = config.collision_radius * 2.0
+		collision_shape.shape = capsule
+	if body_sprite.scale == Vector2.ONE:
+		body_sprite.scale = Vector2.ONE * config.body_scale
 	shadow.texture = load("res://assets/runtime/character/shadow.png")
+	if melee_pivot == null:
+		melee_pivot = Node2D.new()
+		melee_pivot.name = "MeleePivot"
+		melee_pivot.visible = false
+		add_child(melee_pivot)
+		melee_sprite = Sprite2D.new()
+		melee_sprite.name = "MeleeSprite"
+		melee_sprite.position = Vector2(24.0, 0.0)
+		melee_pivot.add_child(melee_sprite)
+		melee_sprite.texture = load("res://assets/侧视角/20 melee weapons/20 melee weapons/Crowbar .PNG") as Texture2D
 	if body_sprite.sprite_frames == null:
 		body_sprite.sprite_frames = SpriteFramesFactory.build_player_frames("res://assets/runtime/character/")
 	SpriteFramesFactory.ensure_player_action_animations(body_sprite.sprite_frames, "res://assets/runtime/character/")
@@ -119,6 +153,7 @@ func _physics_process(delta: float) -> void:
 	_parry_cooldown_remaining = maxf(_parry_cooldown_remaining - delta, 0.0)
 	_damage_invulnerability = maxf(_damage_invulnerability - delta, 0.0)
 	_movement_noise_timer = maxf(_movement_noise_timer - delta, 0.0)
+	_adrenaline_remaining = maxf(_adrenaline_remaining - delta, 0.0)
 	var action_was_active: bool = _action_visual_remaining > 0.0
 	_action_visual_remaining = maxf(_action_visual_remaining - delta, 0.0)
 	_muzzle_flash_remaining = maxf(_muzzle_flash_remaining - delta, 0.0)
@@ -141,6 +176,10 @@ func _physics_process(delta: float) -> void:
 		queue_redraw()
 	if Input.is_action_just_pressed("use_heal"):
 		use_medkit()
+	if Input.is_action_just_pressed("use_consumable"):
+		use_consumable()
+	if _suppress_primary_until_release and not Input.is_action_pressed("shoot"):
+		_suppress_primary_until_release = false
 	_process_throw_input(delta)
 	if Input.is_action_just_pressed("dash"):
 		_dash_requested = true
@@ -148,7 +187,7 @@ func _physics_process(delta: float) -> void:
 	_update_camera_aim(delta)
 	state_machine.physics_update(delta)
 	update_aim()
-	if Input.is_action_pressed("shoot"):
+	if Input.is_action_pressed("shoot") and selected_active_slot < 4 and not _suppress_primary_until_release:
 		shoot()
 	_check_weapon_input()
 	queue_redraw()
@@ -165,6 +204,8 @@ func apply_normal_movement(direction: Vector2, _delta: float) -> void:
 	var movement_speed: float = config.run_speed if running else config.move_speed
 	if is_aiming:
 		movement_speed *= aim_speed_multiplier
+	if _adrenaline_remaining > 0.0:
+		movement_speed *= 1.35
 	velocity = direction * movement_speed
 	move_and_slide()
 	if direction != Vector2.ZERO and _movement_noise_timer <= 0.0:
@@ -217,6 +258,19 @@ func update_aim() -> void:
 	weapon_pivot.position = Vector2(config.hand_offset.x * (1.0 if aim.x >= 0.0 else -1.0), config.hand_offset.y)
 	weapon_pivot.rotation = aim.angle()
 	weapon_sprite.flip_v = aim.x < 0.0
+	var current_weapon: WeaponData = weapons[current_weapon_index] if current_weapon_index >= 0 and current_weapon_index < weapons.size() else null
+	var is_melee_weapon: bool = current_weapon != null and current_weapon.is_melee
+	weapon_sprite.visible = not is_melee_weapon
+	if melee_pivot != null:
+		melee_pivot.visible = is_melee_weapon
+		melee_pivot.position = weapon_pivot.position
+		var swing_offset: float = 0.0
+		if _melee_swing_remaining > 0.0:
+			var swing_progress: float = 1.0 - clampf(_melee_swing_remaining / 0.34, 0.0, 1.0)
+			swing_offset = lerpf(-1.15, 1.05, swing_progress)
+		melee_pivot.rotation = aim.angle() + swing_offset
+		if melee_sprite != null:
+			melee_sprite.flip_v = aim.x < 0.0
 	if flashlight_cone != null:
 		flashlight_cone.position = weapon_pivot.position
 		flashlight_cone.set_direction(aim)
@@ -253,7 +307,8 @@ func shoot() -> void:
 	if weapon.is_melee:
 		_melee_swing_remaining = minf(weapon.fire_rate * 0.65, 0.34)
 		_start_action_visual("melee_swing", _melee_swing_remaining)
-	_muzzle_flash_remaining = 0.08
+	else:
+		_muzzle_flash_remaining = 0.08
 	queue_redraw()
 	var direction := (get_global_mouse_position() - weapon_pivot.global_position).normalized()
 	EventBus.shot_fired.emit(weapon, weapon_pivot.global_position, direction)
@@ -272,10 +327,15 @@ func equip_weapon(index: int) -> void:
 	current_ammo = int(magazine_ammo.get(_weapon_key(weapon), weapon.mag_size))
 	weapon_sprite.texture = get_weapon_display_icon(current_weapon_index)
 	weapon_sprite.scale = Vector2.ONE * weapon.visual_scale
+	if melee_sprite != null:
+		melee_sprite.texture = get_weapon_display_icon(current_weapon_index)
+		melee_sprite.scale = Vector2.ONE * weapon.visual_scale
 	ammo_changed.emit(current_ammo, weapon.mag_size)
 	EventBus.weapon_switched.emit(current_weapon_index, weapon)
 
 func _check_weapon_input() -> void:
+	if weapons.is_empty():
+		return
 	if Input.is_action_just_pressed("weapon_1"):
 		equip_weapon(0)
 	elif Input.is_action_just_pressed("weapon_2"):
@@ -372,7 +432,25 @@ func use_medkit() -> bool:
 	_start_action_visual("heal", 0.8)
 	health_changed.emit(current_health, max_health)
 	EventBus.player_health_changed.emit(current_health, max_health)
-	EventBus.consumable_used.emit("使用医疗包")
+	EventBus.consumable_used.emit("使用回复血瓶")
+	return true
+
+func use_consumable() -> bool:
+	if is_dead:
+		return false
+	var count: int = int(consumable_counts.get(consumable_slot_item, 0))
+	if count <= 0:
+		return false
+	if consumable_slot_item == "ammo_box":
+		refill_ammo()
+	elif consumable_slot_item == "adrenaline":
+		_adrenaline_remaining = 6.0
+		_start_action_visual("resupply", 0.8)
+	else:
+		return false
+	consumable_counts[consumable_slot_item] = count - 1
+	EventBus.consumable_changed.emit(consumable_slot_item, count - 1, 5)
+	EventBus.consumable_used.emit("使用" + consumable_display_name(consumable_slot_item))
 	return true
 
 func restore_at_safehouse() -> void:
@@ -473,11 +551,15 @@ func use_throwable(throwable_type: int, inventory_key: String, charge_ratio: flo
 	var count: int = int(throwable_counts.get(inventory_key, 0))
 	if count <= 0 or is_dead:
 		return false
+	if throwable_type == GameEnums.ThrowableType.MINE and charge_ratio < 0.99:
+		EventBus.consumable_used.emit("地雷安置失败：需要完成进度")
+		return false
 	throwable_counts[inventory_key] = count - 1
 	var direction: Vector2 = (get_global_mouse_position() - global_position).normalized()
 	if direction == Vector2.ZERO:
 		direction = Vector2.RIGHT
-	EventBus.throwable_thrown.emit(throwable_type, global_position + direction * 72.0, direction, self, clampf(charge_ratio, 0.2, 1.0))
+	var start_position: Vector2 = global_position if throwable_type == GameEnums.ThrowableType.MINE else global_position + direction * 72.0
+	EventBus.throwable_thrown.emit(throwable_type, start_position, direction, self, clampf(charge_ratio, 0.2, 1.0))
 	_start_action_visual("throw", 0.45)
 	EventBus.consumable_changed.emit(inventory_key, count - 1, 1)
 	return true
@@ -486,7 +568,241 @@ func add_throwable(throwable_type: int, amount: int, maximum: int) -> void:
 	var inventory_key: String = throwable_key_for_type(throwable_type)
 	var current: int = int(throwable_counts.get(inventory_key, 0))
 	throwable_counts[inventory_key] = mini(current + amount, maximum)
+	if not throwable_slot_items.has(inventory_key):
+		_add_backpack_item("throwable", inventory_key, throwable_display_name(inventory_key), amount)
 	EventBus.consumable_changed.emit(inventory_key, int(throwable_counts[inventory_key]), maximum)
+
+func add_consumable(item_key: String, amount: int, maximum: int = 5) -> void:
+	var current: int = int(consumable_counts.get(item_key, 0))
+	consumable_counts[item_key] = mini(current + amount, maximum)
+	if item_key != consumable_slot_item:
+		_add_backpack_item("consumable", item_key, consumable_display_name(item_key), amount)
+	EventBus.consumable_changed.emit(item_key, int(consumable_counts[item_key]), maximum)
+
+func _add_backpack_item(kind: String, item_key: String, display_name: String, amount: int) -> void:
+	for item_index in backpack_items.size():
+		var item: Dictionary = backpack_items[item_index]
+		if item.is_empty():
+			backpack_items[item_index] = {"kind": kind, "key": item_key, "name": display_name, "count": amount}
+			return
+		var existing_key: String = String(item.get("key", ""))
+		if existing_key == item_key:
+			item["count"] = int(item.get("count", 0)) + amount
+			return
+	if backpack_items.size() >= backpack_capacity:
+		return
+	backpack_items.append({"kind": kind, "key": item_key, "name": display_name, "count": amount})
+
+func consumable_display_name(item_key: String) -> String:
+	match item_key:
+		"ammo_box":
+			return "弹药箱"
+		"adrenaline":
+			return "肾上腺素"
+		_:
+			return "消耗品"
+
+func get_throwable_slot_count(slot_index: int) -> int:
+	if slot_index < 0 or slot_index >= throwable_slot_items.size():
+		return 0
+	return int(throwable_counts.get(throwable_slot_items[slot_index], 0))
+
+func get_active_slot_counts() -> Array[int]:
+	return [medkits, int(consumable_counts.get(consumable_slot_item, 0)), get_throwable_slot_count(0), get_throwable_slot_count(1)]
+
+func get_active_slot_name(slot_index: int) -> String:
+	match slot_index:
+		2:
+			return "回复血瓶"
+		3:
+			return consumable_display_name(consumable_slot_item)
+		4, 5:
+			var throwable_index: int = slot_index - 4
+			if throwable_index >= 0 and throwable_index < throwable_slot_items.size():
+				return throwable_display_name(throwable_slot_items[throwable_index])
+		_:
+			return ""
+	return ""
+
+func get_inventory_record(slot_id: String) -> Dictionary:
+	var record: Dictionary = {}
+	if slot_id.begins_with("backpack_"):
+		var index_text: String = slot_id.trim_prefix("backpack_")
+		var backpack_index: int = int(index_text)
+		if backpack_index >= 0 and backpack_index < backpack_items.size():
+			return backpack_items[backpack_index].duplicate()
+		return record
+	match slot_id:
+		"weapon_1":
+			return _weapon_inventory_record(0)
+		"weapon_2":
+			return _weapon_inventory_record(1)
+		"healing":
+			return {"kind": "healing", "key": "medkit", "name": "回复血瓶", "count": medkits}
+		"consumable":
+			return {"kind": "consumable", "key": consumable_slot_item, "name": consumable_display_name(consumable_slot_item), "count": int(consumable_counts.get(consumable_slot_item, 0))}
+		"throwable_1":
+			return _throwable_inventory_record(0)
+		"throwable_2":
+			return _throwable_inventory_record(1)
+		"armor_body":
+			return {"kind": "armor", "key": "armor_body", "name": armor_body.armor_name if armor_body != null else "空", "count": 1 if armor_body != null else 0, "data": armor_body}
+		"armor_head":
+			return {"kind": "armor", "key": "armor_head", "name": armor_head.armor_name if armor_head != null else "空", "count": 1 if armor_head != null else 0, "data": armor_head}
+		"armor_hands":
+			return {"kind": "armor", "key": "armor_hands", "name": armor_hands.armor_name if armor_hands != null else "空", "count": 1 if armor_hands != null else 0, "data": armor_hands}
+		_:
+			return record
+
+func move_inventory_item(source_id: String, target_id: String) -> bool:
+	if source_id == target_id:
+		return false
+	var source_record: Dictionary = get_inventory_record(source_id)
+	if source_record.is_empty() or int(source_record.get("count", 0)) <= 0:
+		return false
+	if target_id.begins_with("backpack_"):
+		if source_id.begins_with("backpack_"):
+			return false
+		if source_id.begins_with("weapon_"):
+			return false
+		var target_index: int = int(target_id.trim_prefix("backpack_"))
+		if target_index < 0 or target_index >= backpack_capacity:
+			return false
+		var target_bag_record: Dictionary = get_inventory_record(target_id)
+		if not target_bag_record.is_empty() and int(target_bag_record.get("count", 0)) > 0:
+			return false
+		while backpack_items.size() <= target_index:
+			backpack_items.append({})
+		backpack_items[target_index] = source_record
+		_clear_equipment_slot(source_id)
+		return true
+	var target_record: Dictionary = get_inventory_record(target_id)
+	if not _inventory_slot_accepts(target_id, source_record):
+		return false
+	if source_id.begins_with("backpack_"):
+		var source_index: int = int(source_id.trim_prefix("backpack_"))
+		if source_index < 0 or source_index >= backpack_items.size():
+			return false
+		if not target_record.is_empty() and int(target_record.get("count", 0)) > 0:
+			backpack_items[source_index] = target_record
+		else:
+			backpack_items.remove_at(source_index)
+		_apply_equipment_record(target_id, source_record)
+		return true
+	if not target_record.is_empty() and int(target_record.get("count", 0)) > 0:
+		if target_id.begins_with("weapon_"):
+			return false
+		_clear_equipment_slot(target_id)
+		_apply_equipment_record(target_id, source_record)
+		_apply_equipment_record(source_id, target_record)
+		return true
+	_clear_equipment_slot(source_id)
+	_apply_equipment_record(target_id, source_record)
+	return true
+
+func _inventory_slot_accepts(slot_id: String, record: Dictionary) -> bool:
+	var kind: String = String(record.get("kind", ""))
+	if slot_id == "healing":
+		return kind == "healing"
+	if slot_id == "consumable":
+		return kind == "consumable"
+	if slot_id == "throwable_1" or slot_id == "throwable_2":
+		return kind == "throwable"
+	if slot_id == "armor_head" or slot_id == "armor_hands" or slot_id == "armor_body":
+		return kind == "armor"
+	if slot_id == "weapon_1" or slot_id == "weapon_2":
+		return kind == "weapon"
+	return false
+
+func _clear_equipment_slot(slot_id: String) -> void:
+	match slot_id:
+		"healing":
+			medkits = 0
+		"consumable":
+			consumable_slot_item = ""
+		"throwable_1":
+			throwable_slot_items[0] = ""
+		"throwable_2":
+			throwable_slot_items[1] = ""
+		"armor_body":
+			armor_body = null
+			armor = null
+			armor_reduction = 0.15
+		"armor_head":
+			armor_head = null
+		"armor_hands":
+			armor_hands = null
+
+func _apply_equipment_record(slot_id: String, record: Dictionary) -> void:
+	var kind: String = String(record.get("kind", ""))
+	var key: String = String(record.get("key", ""))
+	var count: int = int(record.get("count", 0))
+	match slot_id:
+		"healing":
+			medkits = count
+		"consumable":
+			consumable_slot_item = key
+			if key != "":
+				consumable_counts[key] = count
+		"throwable_1", "throwable_2":
+			var throwable_index: int = 0 if slot_id == "throwable_1" else 1
+			throwable_slot_items[throwable_index] = key
+			throwable_counts[key] = count
+		"armor_body", "armor_head", "armor_hands":
+			if kind == "armor":
+				var armor_data: ArmorData = record.get("data") as ArmorData
+				if slot_id == "armor_body":
+					armor_body = armor_data
+					armor = armor_data
+					armor_reduction = armor_data.damage_reduction if armor_data != null else 0.15
+				elif slot_id == "armor_head":
+					armor_head = armor_data
+				else:
+					armor_hands = armor_data
+		"weapon_1", "weapon_2":
+			var weapon_data: WeaponData = record.get("data") as WeaponData
+			var weapon_index: int = 0 if slot_id == "weapon_1" else 1
+			if weapon_data != null and weapon_index < weapons.size():
+				weapons[weapon_index] = weapon_data
+				register_weapon(weapon_data)
+				if current_weapon_index == weapon_index:
+					equip_weapon(weapon_index)
+
+func _weapon_inventory_record(index: int) -> Dictionary:
+	if index < 0 or index >= weapons.size() or weapons[index] == null:
+		return {}
+	var weapon_data: WeaponData = weapons[index]
+	return {"kind": "weapon", "key": "weapon_%d" % (index + 1), "name": weapon_data.weapon_name, "count": 1, "data": weapon_data, "icon": get_weapon_display_icon(index)}
+
+func _throwable_inventory_record(index: int) -> Dictionary:
+	if index < 0 or index >= throwable_slot_items.size() or throwable_slot_items[index] == "":
+		return {}
+	var key: String = throwable_slot_items[index]
+	return {"kind": "throwable", "key": key, "name": throwable_display_name(key), "count": int(throwable_counts.get(key, 0))}
+
+func throwable_display_name(item_key: String) -> String:
+	match item_key:
+		"flare":
+			return "信号弹"
+		"smoke":
+			return "烟雾弹"
+		"grenade":
+			return "手雷"
+		"mine":
+			return "地雷"
+		_:
+			return "投掷物"
+
+func select_active_slot(slot_index: int, suppress_primary: bool = false) -> void:
+	if slot_index < 0 or slot_index > 5:
+		return
+	selected_active_slot = slot_index
+	selected_quick_slot = slot_index
+	if suppress_primary:
+		_suppress_primary_until_release = true
+	if slot_index < 2:
+		equip_weapon(slot_index)
+	queue_redraw()
 
 func throwable_key_for_type(throwable_type: int) -> String:
 	match throwable_type:
@@ -500,47 +816,81 @@ func throwable_key_for_type(throwable_type: int) -> String:
 			return "mine"
 
 func use_quick_slot(slot_index: int) -> bool:
-	if slot_index < 0 or slot_index >= quick_slot_items.size():
+	if slot_index < 0 or slot_index >= throwable_slot_items.size():
 		return false
-	selected_quick_slot = slot_index
-	var item_key: String = quick_slot_items[slot_index]
-	var throwable_type: int = slot_index
+	select_active_slot(slot_index + 4)
+	var item_key: String = throwable_slot_items[slot_index]
+	var throwable_type: int = throwable_type_for_key(item_key)
 	return use_throwable(throwable_type, item_key)
 
 func _process_throw_input(delta: float) -> void:
-	var actions: Array[String] = ["throw_flare", "throw_smoke", "throw_grenade", "throw_mine"]
-	for slot in actions.size():
-		var action: String = actions[slot]
-		if Input.is_action_just_pressed(action):
-			_begin_throw_charge(slot)
-		if _throw_charging and _throw_slot == slot and Input.is_action_just_released(action):
-			_release_throw_charge()
+	_check_active_slot_input()
+	if _suppress_primary_until_release:
+		return
+	if selected_active_slot < 4:
+		return
+	var throwable_slot: int = selected_active_slot - 4
+	if Input.is_action_just_pressed("shoot"):
+		_begin_throw_charge(throwable_slot)
+	if _throw_charging and Input.is_action_just_released("shoot"):
+		_release_throw_charge()
 	if _throw_charging:
 		_throw_charge = minf(_throw_charge + delta, _throw_charge_duration)
 		queue_redraw()
 
 func _begin_throw_charge(slot: int) -> void:
-	if slot < 0 or slot >= quick_slot_items.size() or is_dead:
+	if slot < 0 or slot >= throwable_slot_items.size() or is_dead:
 		return
-	var item_key: String = quick_slot_items[slot]
+	var item_key: String = throwable_slot_items[slot]
 	if int(throwable_counts.get(item_key, 0)) <= 0:
 		return
-	selected_quick_slot = slot
+	selected_active_slot = slot + 4
+	selected_quick_slot = slot + 4
 	_throw_slot = slot
 	_throw_charge = 0.0
 	_throw_charging = true
 	queue_redraw()
 
 func _release_throw_charge() -> void:
-	if not _throw_charging or _throw_slot < 0 or _throw_slot >= quick_slot_items.size():
+	if not _throw_charging or _throw_slot < 0 or _throw_slot >= throwable_slot_items.size():
 		return
 	var slot: int = _throw_slot
 	var charge_ratio: float = clampf(_throw_charge / _throw_charge_duration, 0.2, 1.0)
 	_throw_charging = false
 	_throw_slot = -1
 	_throw_charge = 0.0
-	use_throwable(slot, quick_slot_items[slot], charge_ratio)
+	var item_key: String = throwable_slot_items[slot]
+	use_throwable(throwable_type_for_key(item_key), item_key, charge_ratio)
 	queue_redraw()
+
+func _check_active_slot_input() -> void:
+	if Input.is_action_just_pressed("weapon_1"):
+		select_active_slot(0)
+	elif Input.is_action_just_pressed("weapon_2"):
+		select_active_slot(1)
+	elif Input.is_action_just_pressed("throw_flare"):
+		select_active_slot(4)
+	elif Input.is_action_just_pressed("throw_smoke"):
+		select_active_slot(5)
+	elif Input.is_action_just_pressed("throw_grenade"):
+		select_active_slot(4)
+		if throwable_slot_items.size() > 0:
+			throwable_slot_items[0] = "grenade"
+	elif Input.is_action_just_pressed("throw_mine"):
+		select_active_slot(5)
+		if throwable_slot_items.size() > 1:
+			throwable_slot_items[1] = "mine"
+
+func throwable_type_for_key(item_key: String) -> int:
+	match item_key:
+		"flare":
+			return GameEnums.ThrowableType.FLARE
+		"smoke":
+			return GameEnums.ThrowableType.SMOKE
+		"grenade":
+			return GameEnums.ThrowableType.GRENADE
+		_:
+			return GameEnums.ThrowableType.MINE
 
 func get_reload_ratio() -> float:
 	if not is_reloading or _reload_duration <= 0.0:
@@ -548,10 +898,7 @@ func get_reload_ratio() -> float:
 	return clampf(1.0 - _reload_remaining / _reload_duration, 0.0, 1.0)
 
 func get_quick_slot_counts() -> Array[int]:
-	var counts: Array[int] = []
-	for item_key in quick_slot_items:
-		counts.append(int(throwable_counts.get(item_key, 0)))
-	return counts
+	return get_active_slot_counts()
 
 func is_protected_by_safehouse() -> bool:
 	for node in get_tree().get_nodes_in_group("safehouses"):
@@ -580,7 +927,7 @@ func _setup_flashlight_light() -> void:
 		for y in 160:
 			var distance_from_center: float = absf(float(y) - 80.0)
 			var edge: float = clampf((spread - distance_from_center) / maxf(spread * 0.35, 1.0), 0.0, 1.0)
-			var alpha: float = edge * (1.0 - progress * 0.82) * 0.9
+			var alpha: float = 0.0 if x < 160 else edge * (1.0 - progress * 0.82) * 0.9
 			image.set_pixel(x, y, Color(1.0, 0.92, 0.62, alpha))
 	var texture: ImageTexture = ImageTexture.create_from_image(image)
 	flashlight_light.texture = texture
@@ -601,11 +948,12 @@ func _draw() -> void:
 		var muzzle: Vector2 = weapon_pivot.position + Vector2.RIGHT.rotated(weapon_pivot.rotation) * 38.0
 		draw_circle(muzzle, 8.0, Color(1.0, 0.82, 0.3, 0.85))
 		draw_line(muzzle, muzzle + Vector2.RIGHT.rotated(weapon_pivot.rotation) * 18.0, Color(1.0, 0.96, 0.7, 0.9), 3.0)
-	if _melee_swing_remaining > 0.0 and weapon_pivot != null:
+	if _melee_swing_remaining > 0.0 and melee_pivot != null:
 		var swing_ratio: float = clampf(_melee_swing_remaining / 0.34, 0.0, 1.0)
-		var swing_angle: float = weapon_pivot.rotation
-		draw_arc(weapon_pivot.position, 56.0, swing_angle - 0.95, swing_angle + 0.95, 24, Color(1.0, 0.82, 0.42, 0.78 * swing_ratio), 5.0)
-		draw_arc(weapon_pivot.position, 44.0, swing_angle - 0.72, swing_angle + 0.72, 18, Color(0.85, 0.94, 0.88, 0.52 * swing_ratio), 2.0)
+		var swing_angle: float = melee_pivot.rotation
+		draw_arc(melee_pivot.position, 56.0, swing_angle - 0.95, swing_angle + 0.95, 24, Color(1.0, 0.82, 0.42, 0.78 * swing_ratio), 5.0)
+		draw_arc(melee_pivot.position, 44.0, swing_angle - 0.72, swing_angle + 0.72, 18, Color(0.85, 0.94, 0.88, 0.52 * swing_ratio), 2.0)
+		draw_line(melee_pivot.position + Vector2.from_angle(swing_angle - 0.95) * 30.0, melee_pivot.position + Vector2.from_angle(swing_angle - 0.95) * 74.0, Color(1.0, 0.75, 0.32, 0.55 * swing_ratio), 3.0)
 	if _throw_charging:
 		var charge_ratio: float = clampf(_throw_charge / _throw_charge_duration, 0.0, 1.0)
 		draw_arc(Vector2.ZERO, 42.0, -PI * 0.5, -PI * 0.5 + TAU * charge_ratio, 28, Color(1.0, 0.72, 0.3, 0.95), 4.0)

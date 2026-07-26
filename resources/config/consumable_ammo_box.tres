@@ -4,9 +4,8 @@
 
 [resource]
 script = ExtResource("1_consumable")
-item_name = "医疗包"
-item_id = "medkit"
-item_type = 2
-max_carry = 3
+item_name = "弹药箱"
+item_id = "ammo_box"
+item_type = 4
+max_carry = 5
 use_noise = 0
-heal_amount = 35.0

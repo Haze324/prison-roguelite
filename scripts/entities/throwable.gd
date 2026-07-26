@@ -48,6 +48,9 @@ func setup(kind: int, start_position: Vector2, owner_node: Node2D, throw_directi
             blast_radius = 60.0
             trigger_noise = 40
             _detonate_on_impact = true
+            _landed = true
+            velocity = Vector2.ZERO
+            flight_remaining = 0.0
     queue_redraw()
 
 func _physics_process(delta: float) -> void:
@@ -97,18 +100,15 @@ func _advance_flight(delta: float) -> void:
     var hit_position: Vector2 = hit.get("position", global_position)
     var collider: Node = hit.get("collider") as Node
     if _is_monster(collider):
-        if _detonate_on_impact:
-            global_position = hit_position
-            _explode()
-        else:
-            _land(hit_position)
+        global_position = hit_position
+        _explode()
         return
     if _is_wall(collider):
         var normal: Vector2 = hit.get("normal", Vector2.ZERO)
-        bounces_remaining -= 1
         if bounces_remaining <= 0 or normal == Vector2.ZERO:
             _land(hit_position + normal * 3.0)
             return
+        bounces_remaining -= 1
         global_position = hit_position + normal * 3.0
         velocity = velocity.bounce(normal) * 0.68
         queue_redraw()

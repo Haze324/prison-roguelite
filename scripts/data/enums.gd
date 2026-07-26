@@ -9,4 +9,4 @@ enum MonsterTier { GRUNT = 0, ELITE = 1, MINI_BOSS = 2, BOSS = 3 }
 enum ReloadMode { MAGAZINE = 0, SINGLE = 1, NONE = 2 }
 enum WeaponType { PISTOL = 0, SHOTGUN = 1, MELEE = 2, RIFLE = 3 }
 enum ThrowableType { FLARE = 0, SMOKE = 1, GRENADE = 2, MINE = 3 }
-enum ConsumableType { AMMO = 0, THROWABLE = 1, HEALING = 2, RESOURCE = 3 }
+enum ConsumableType { AMMO = 0, THROWABLE = 1, HEALING = 2, RESOURCE = 3, TACTICAL = 4 }

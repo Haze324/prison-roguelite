@@ -55,11 +55,14 @@ func collect(target_player: Player) -> void:
         elif item_data.item_type == GameEnums.ConsumableType.THROWABLE:
             target_player.add_throwable(item_data.throwable_type, amount, item_data.max_carry)
         elif item_data.item_type == GameEnums.ConsumableType.AMMO:
-            target_player.refill_ammo()
+            target_player.add_consumable("ammo_box", amount, item_data.max_carry)
+        elif item_data.item_type == GameEnums.ConsumableType.TACTICAL:
+            var tactical_key: String = item_data.item_id
+            target_player.add_consumable(tactical_key, amount, item_data.max_carry)
     elif item_name == "Medkit":
         target_player.medkits = mini(target_player.medkits + amount, 5)
     elif item_name == "Ammo":
-        target_player.refill_ammo()
+        target_player.add_consumable("ammo_box", amount)
     elif item_name == "Shotgun":
         var shotgun: WeaponData = load("res://resources/weapons/shotgun_common.tres") as WeaponData
         if shotgun != null and target_player.weapons.size() >= 2:

@@ -32,4 +32,3 @@ func _draw() -> void:
 	draw_line(Vector2.ZERO, Vector2.from_angle(-half_angle) * length, Color(1.0, 0.92, 0.58, 0.18), 1.0)
 	draw_line(Vector2.ZERO, Vector2.from_angle(half_angle) * length, Color(1.0, 0.92, 0.58, 0.18), 1.0)
 	draw_circle(Vector2(34.0, 0.0), 18.0, Color(1.0, 0.92, 0.6, 0.14))
-	draw_line(Vector2.ZERO, Vector2.RIGHT * 76.0, Color(1.0, 0.95, 0.7, 0.24), 3.0)

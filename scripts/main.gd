@@ -4,6 +4,8 @@ const MONSTER_SCENE: PackedScene = preload("res://scenes/monster.tscn")
 const BOSS_DATA: MonsterData = preload("res://resources/monsters/boss_grunt.tres")
 const DAMAGE_POPUP_SCRIPT: Script = preload("res://scripts/entities/damage_popup.gd")
 const MEDKIT_DATA: ConsumableData = preload("res://resources/config/consumable_medkit.tres")
+const AMMO_BOX_DATA: ConsumableData = preload("res://resources/config/consumable_ammo_box.tres")
+const ADRENALINE_DATA: ConsumableData = preload("res://resources/config/consumable_adrenaline.tres")
 const FLARE_DATA: ConsumableData = preload("res://resources/consumables/throwable_flare.tres")
 const SMOKE_DATA: ConsumableData = preload("res://resources/consumables/throwable_smoke.tres")
 const GRENADE_DATA: ConsumableData = preload("res://resources/consumables/throwable_grenade.tres")
@@ -65,8 +67,9 @@ func _ready() -> void:
 	map_generator.generate()
 	_build_boundary_walls()
 	_spawn_data_pickup(Vector2(330.0, 480.0), MEDKIT_DATA, 1, Color(0.85, 0.25, 0.3, 1.0))
-	_spawn_pickup(Vector2(760.0, 650.0), "Ammo", 1, Color(0.3, 0.7, 0.9, 1.0))
+	_spawn_data_pickup(Vector2(760.0, 650.0), AMMO_BOX_DATA, 1, Color(0.3, 0.7, 0.9, 1.0))
 	_spawn_data_pickup(Vector2(1180.0, 330.0), MEDKIT_DATA, 1, Color(0.85, 0.25, 0.3, 1.0))
+	_spawn_data_pickup(Vector2(1080.0, 820.0), ADRENALINE_DATA, 1, Color(0.95, 0.55, 0.2, 1.0))
 	var generated_shotgun: WeaponData = WeaponGenerator.generate_random(SHOTGUN_DATA, map_generator.map_seed)
 	_spawn_weapon_pickup(Vector2(1220.0, 700.0), generated_shotgun, Color(0.78, 0.45, 0.95, 1.0))
 	_spawn_data_pickup(Vector2(500.0, 760.0), FLARE_DATA, 1, Color(1.0, 0.78, 0.28, 1.0))
@@ -109,7 +112,7 @@ func _update_hud() -> void:
 		boss_text = "%.0f/%.0f" % [_boss.current_health, _boss.data.max_health]
 		boss_health = _boss.current_health
 		boss_max_health = _boss.data.max_health
-	status_label.text = "PRISON ROGUELITE DEMO\n\nHP: %.0f/%.0f   Medkits: %d\nWeapon: %s   Ammo: %s\nState: %s\nNoise: %.0f + %.0f\nKills: %d   Boss: %s\n\nWASD move | Shift dash\nLMB fire | R reload | RMB parry\nQ heal | E resupply in safehouse" % [
+	status_label.text = "PRISON ROGUELITE DEMO\n\nHP: %.0f/%.0f   Heal: %d\nWeapon: %s   Ammo: %s\nState: %s\nNoise: %.0f + %.0f\nKills: %d   Boss: %s\n\nWASD move | Shift dash\nLMB fire / throw charge | R reload | RMB aim/parry\nQ heal | F consumable | E resupply in safehouse" % [
 		player.current_health,
 		player.max_health,
 		player.medkits,
@@ -152,13 +155,15 @@ func _update_hud() -> void:
 		armor_maximum,
 		throwable_summary,
 		player.get_quick_slot_counts(),
-		player.selected_quick_slot,
+		player.selected_active_slot,
 		MetaProgression.coins,
 		MetaProgression.skill_points,
-		player.get_weapon_display_icon(player.current_weapon_index),
+		player.get_weapon_display_icon(0),
 		player.get_weapon_display_icon(1),
 		player.current_weapon_index,
-		player.get_reload_ratio()
+		player.get_reload_ratio(),
+		player.consumable_display_name(player.consumable_slot_item),
+		[player.throwable_display_name(player.throwable_slot_items[0]), player.throwable_display_name(player.throwable_slot_items[1])]
 	)
 
 func _on_shot_fired(weapon_data: WeaponData, position: Vector2, direction: Vector2) -> void:

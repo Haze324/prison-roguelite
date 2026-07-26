@@ -352,10 +352,13 @@ extends Resource
 ## 消耗品名称
 @export var item_name: String = ""
 
-## 类型：0=弹药箱 1=投掷物 2=肾上腺素 3=其他 4=回复血瓶
+## 稳定数据 ID，不随显示语言变化
+@export var item_id: String = ""
+
+## 类型：0=弹药箱 1=投掷物 2=回复血瓶 3=其他 4=普通消耗品（肾上腺素等）
 @export var item_type: int = 0
 
-## 使用通道：4=healing 槽并由 Q 使用；其余非治疗物品进入 consumable 槽并由 F 使用
+## 使用通道：2=healing 槽并由 Q 使用；0/4 等非治疗物品进入 consumable 槽并由 F 使用
 
 ## 携带上限
 @export var max_carry: int = 2
