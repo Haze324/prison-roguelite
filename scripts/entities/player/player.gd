@@ -955,12 +955,8 @@ func _check_active_slot_input() -> void:
 		select_active_slot(5)
 	elif Input.is_action_just_pressed("throw_grenade"):
 		select_active_slot(4)
-		if throwable_slot_items.size() > 0:
-			throwable_slot_items[0] = "grenade"
 	elif Input.is_action_just_pressed("throw_mine"):
 		select_active_slot(5)
-		if throwable_slot_items.size() > 1:
-			throwable_slot_items[1] = "mine"
 
 func throwable_type_for_key(item_key: String) -> int:
 	match item_key:
