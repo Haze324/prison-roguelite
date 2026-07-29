@@ -1,10 +1,10 @@
 # 地图编辑器快速指南
 
-打开 `scenes/maps/cell_block_a2_tilemap.tscn` 后，TileSet 会显示完整的 12×12 标准化工业图集；每一格均为 48×48。
+打开 `scenes/maps/cell_block_a2_tilemap.tscn` 后：
 
-1. `FloorLayer`：使用 `(0, 0)` 普通地面和 `(1, 0)` 走廊地面。
-2. `WallLayer`：使用 `(0, 2)` 横墙、`(1, 3)` 竖墙、`(2, 3)` 转角。
-3. `DoorFrameLayer`：使用 `(3, 4)` 门框，墙层门洞留空。
-4. 灯具、管道和其他完整的 48×48 装饰素材，可放在后续独立的装饰层；不要把它们放进结构层。
+1. `FloorLayer`、`WallLayer`、`DoorFrameLayer` 选择 TileSet 来源 0 的建筑素材。
+2. `DecorationLayer` 选择 TileSet 来源 1 的标准化装饰素材。
+3. 来源 1 对应原图第 5–11 行；每个素材都是透明、等比、居中的 48×48 单元。
+4. 灯具、管道、终端和血迹不参与碰撞与遮光；墙体仍只使用来源 0 的结构瓦片。
 
-灰色覆盖不是图集尺寸问题；它是编辑器的 TileMap 选择/绘制预览。按 `Esc` 取消当前单元选择即可清除。
+当前灰色覆盖仍属于 Godot TileMap 编辑器的选择/绘制预览，不属于运行时地板材质。

@@ -5,7 +5,7 @@
 ## 修复内容
 
 - 正式图集恢复原先的工业监狱材质，不再使用简化的程序化砖块图集。
-- 原始材质图实际为 12×12 网格；运行时完整保留全部 144 个素材单元，并将每格统一规范化为 48×48。
+- 原始材质图实际为 12×12 网格。建筑材质保留原始拼接关系；原图第 5–11 行的装饰主体单独归一化为透明、等比、居中的 48×48 单元。
 - 正式图集：`assets/generated/tilesets/industrial_prison/prison_tileset_atlas_material_48_v4.png`。
 - TileSet：`resources/maps/prison_tileset_v1.tres`。
 - 地图墙体仍由 `TileMapLayer` 负责，墙体瓦片负责碰撞和遮光，门框层只负责视觉。

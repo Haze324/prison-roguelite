@@ -50,6 +50,13 @@ func _initialize() -> void:
 	door_layer.owner = root
 	_paint_door_frames(door_layer)
 
+	var decoration_layer: TileMapLayer = TileMapLayer.new()
+	decoration_layer.name = "DecorationLayer"
+	decoration_layer.z_index = -3
+	decoration_layer.tile_set = tile_set
+	root.add_child(decoration_layer)
+	decoration_layer.owner = root
+
 	var packed_scene: PackedScene = PackedScene.new()
 	var pack_error: Error = packed_scene.pack(root)
 	if pack_error != OK:
