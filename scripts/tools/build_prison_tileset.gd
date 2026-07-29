@@ -1,20 +1,21 @@
 extends SceneTree
 
-## Builds a usable TileSet from the 7x8 atlas produced by slice_prison_contact_sheet.gd.
-## It deliberately does not infer a grid from the contact sheet at build time.
-const ATLAS_PATH: String = "res://assets/generated/tilesets/industrial_prison/prison_tileset_sliced_48_v6.png"
+## Registers the generated modular environment set.
+## Source 0 is opaque structure; source 1 is transparent decoration and never owns wall pixels.
+const STRUCTURE_ATLAS_PATH: String = "res://assets/generated/tilesets/industrial_prison/prison_modular_structure_48_v4.png"
+const PROPS_ATLAS_PATH: String = "res://assets/generated/tilesets/industrial_prison/prison_modular_props_48_v1.png"
 const OUTPUT_PATH: String = "res://resources/maps/prison_tileset_v1.tres"
 const TILE_SIZE: Vector2i = Vector2i(48, 48)
-const GRID_COLUMNS: int = 7
-const GRID_ROWS: int = 8
-const SOLID_TILES: Array[Vector2i] = [
-	Vector2i(2, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 2),
-]
+const STRUCTURE_COLUMNS: int = 16
+const STRUCTURE_ROWS: int = 8
+const PROP_COLUMNS: int = 8
+const PROP_ROWS: int = 8
 
 func _initialize() -> void:
-	var texture: Texture2D = load(ATLAS_PATH) as Texture2D
-	if texture == null:
-		push_error("Could not load sliced prison tile atlas: " + ATLAS_PATH)
+	var structure_texture: Texture2D = load(STRUCTURE_ATLAS_PATH) as Texture2D
+	var props_texture: Texture2D = load(PROPS_ATLAS_PATH) as Texture2D
+	if structure_texture == null or props_texture == null:
+		push_error("Could not load modular prison structure or prop atlas")
 		quit(1)
 		return
 	var tile_set: TileSet = TileSet.new()
@@ -28,31 +29,44 @@ func _initialize() -> void:
 	tile_set.set_custom_data_layer_name(0, "tile_role")
 	tile_set.set_custom_data_layer_type(0, TYPE_STRING)
 
-	var atlas: TileSetAtlasSource = TileSetAtlasSource.new()
-	atlas.texture = texture
-	atlas.texture_region_size = TILE_SIZE
-	for y in range(GRID_ROWS):
-		for x in range(GRID_COLUMNS):
-			atlas.create_tile(Vector2i(x, y))
-	tile_set.add_source(atlas, 0)
-	for y in range(GRID_ROWS):
-		for x in range(GRID_COLUMNS):
-			_configure_tile(atlas, Vector2i(x, y))
+	var structure: TileSetAtlasSource = TileSetAtlasSource.new()
+	structure.texture = structure_texture
+	structure.texture_region_size = TILE_SIZE
+	for y in range(STRUCTURE_ROWS):
+		for x in range(STRUCTURE_COLUMNS):
+			structure.create_tile(Vector2i(x, y))
+	tile_set.add_source(structure, 0)
+	for y in range(STRUCTURE_ROWS):
+		for x in range(STRUCTURE_COLUMNS):
+			_configure_structure_tile(structure, Vector2i(x, y))
+
+	var props: TileSetAtlasSource = TileSetAtlasSource.new()
+	props.texture = props_texture
+	props.texture_region_size = TILE_SIZE
+	for y in range(PROP_ROWS):
+		for x in range(PROP_COLUMNS):
+			props.create_tile(Vector2i(x, y))
+	tile_set.add_source(props, 1)
+	for y in range(PROP_ROWS):
+		for x in range(PROP_COLUMNS):
+			var data: TileData = props.get_tile_data(Vector2i(x, y), 0)
+			if data != null:
+				data.set_custom_data("tile_role", "wall_prop_overlay")
 
 	var error: Error = ResourceSaver.save(tile_set, OUTPUT_PATH)
 	if error != OK:
-		push_error("Could not save prison TileSet: " + str(error))
+		push_error("Could not save modular prison TileSet: " + str(error))
 		quit(1)
 		return
-	print("PRISON TILESET BUILT: " + OUTPUT_PATH + " (7x8, 56 selectable source assets)")
+	print("MODULAR PRISON TILESET BUILT: structure=128 props=64")
 	quit(0)
 
-func _configure_tile(atlas: TileSetAtlasSource, coords: Vector2i) -> void:
+func _configure_structure_tile(atlas: TileSetAtlasSource, coords: Vector2i) -> void:
 	var data: TileData = atlas.get_tile_data(coords, 0)
 	if data == null:
 		return
 	data.set_custom_data("tile_role", _tile_role(coords))
-	if not SOLID_TILES.has(coords):
+	if not _is_solid_structure(coords):
 		return
 	var half: float = float(TILE_SIZE.x) * 0.5
 	var polygon: PackedVector2Array = PackedVector2Array([
@@ -66,15 +80,18 @@ func _configure_tile(atlas: TileSetAtlasSource, coords: Vector2i) -> void:
 	data.set_occluder_polygons_count(0, 1)
 	data.set_occluder_polygon(0, 0, occluder)
 
+func _is_solid_structure(coords: Vector2i) -> bool:
+	return coords.y >= 1 and coords.y <= 5
+
 func _tile_role(coords: Vector2i) -> String:
-	if coords == Vector2i(0, 0) or coords == Vector2i(1, 0):
-		return "floor"
-	if coords == Vector2i(2, 0):
-		return "wall_horizontal"
-	if coords == Vector2i(0, 1):
-		return "wall_vertical"
-	if coords == Vector2i(1, 1):
-		return "wall_corner"
-	if coords == Vector2i(2, 2):
+	if coords == Vector2i(4, 1):
 		return "door_frame"
-	return "decoration"
+	if coords.y == 0:
+		return "floor"
+	if coords.y == 1:
+		return "wall_horizontal"
+	if coords.y == 2:
+		return "wall_vertical"
+	if coords.y == 5 and coords.x < 8:
+		return "wall_corner"
+	return "wall_structure"

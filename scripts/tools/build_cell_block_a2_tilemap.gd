@@ -8,10 +8,15 @@ const GRID_SIZE: Vector2i = Vector2i(35, 23)
 
 const FLOOR_TILE: Vector2i = Vector2i(0, 0)
 const CORRIDOR_TILE: Vector2i = Vector2i(1, 0)
-const HORIZONTAL_WALL_TILE: Vector2i = Vector2i(2, 0)
-const VERTICAL_WALL_TILE: Vector2i = Vector2i(0, 1)
-const CORNER_TILE: Vector2i = Vector2i(1, 1)
-const DOOR_TILE: Vector2i = Vector2i(2, 2)
+const HORIZONTAL_TOP_TILE: Vector2i = Vector2i(1, 1)
+const HORIZONTAL_BOTTOM_TILE: Vector2i = Vector2i(9, 1)
+const VERTICAL_LEFT_TILE: Vector2i = Vector2i(1, 2)
+const VERTICAL_RIGHT_TILE: Vector2i = Vector2i(9, 2)
+const CORNER_TOP_LEFT_TILE: Vector2i = Vector2i(0, 5)
+const CORNER_TOP_RIGHT_TILE: Vector2i = Vector2i(1, 5)
+const CORNER_BOTTOM_RIGHT_TILE: Vector2i = Vector2i(2, 5)
+const CORNER_BOTTOM_LEFT_TILE: Vector2i = Vector2i(3, 5)
+const DOOR_TILE: Vector2i = Vector2i(4, 1)
 
 func _initialize() -> void:
 	var tile_set: TileSet = load(TILE_SET_PATH) as TileSet
@@ -56,6 +61,7 @@ func _initialize() -> void:
 	decoration_layer.tile_set = tile_set
 	root.add_child(decoration_layer)
 	decoration_layer.owner = root
+	_paint_decorations(decoration_layer)
 
 	var packed_scene: PackedScene = PackedScene.new()
 	var pack_error: Error = packed_scene.pack(root)
@@ -113,16 +119,26 @@ func _draw_room(layer: TileMapLayer, rect: Rect2i, openings: Array[Vector2i]) ->
 		var top_cell: Vector2i = Vector2i(x, top)
 		var bottom_cell: Vector2i = Vector2i(x, bottom)
 		if not openings.has(top_cell):
-			layer.set_cell(top_cell, 0, CORNER_TILE if x == left or x == right else HORIZONTAL_WALL_TILE)
+			if x == left:
+				layer.set_cell(top_cell, 0, CORNER_TOP_LEFT_TILE)
+			elif x == right:
+				layer.set_cell(top_cell, 0, CORNER_TOP_RIGHT_TILE)
+			else:
+				layer.set_cell(top_cell, 0, HORIZONTAL_TOP_TILE)
 		if not openings.has(bottom_cell):
-			layer.set_cell(bottom_cell, 0, CORNER_TILE if x == left or x == right else HORIZONTAL_WALL_TILE)
+			if x == left:
+				layer.set_cell(bottom_cell, 0, CORNER_BOTTOM_LEFT_TILE)
+			elif x == right:
+				layer.set_cell(bottom_cell, 0, CORNER_BOTTOM_RIGHT_TILE)
+			else:
+				layer.set_cell(bottom_cell, 0, HORIZONTAL_BOTTOM_TILE)
 	for y in range(top + 1, bottom):
 		var left_cell: Vector2i = Vector2i(left, y)
 		var right_cell: Vector2i = Vector2i(right, y)
 		if not openings.has(left_cell):
-			layer.set_cell(left_cell, 0, CORNER_TILE if y == top + 1 or y == bottom - 1 else VERTICAL_WALL_TILE)
+			layer.set_cell(left_cell, 0, VERTICAL_LEFT_TILE)
 		if not openings.has(right_cell):
-			layer.set_cell(right_cell, 0, CORNER_TILE if y == top + 1 or y == bottom - 1 else VERTICAL_WALL_TILE)
+			layer.set_cell(right_cell, 0, VERTICAL_RIGHT_TILE)
 
 func _paint_door_frames(layer: TileMapLayer) -> void:
 	var door_cells: Array[Vector2i] = [
@@ -133,3 +149,11 @@ func _paint_door_frames(layer: TileMapLayer) -> void:
 	]
 	for cell in door_cells:
 		layer.set_cell(cell, 0, DOOR_TILE)
+
+func _paint_decorations(layer: TileMapLayer) -> void:
+	# Source 1 contains alpha-only props. They deliberately do not carry wall pixels.
+	layer.set_cell(Vector2i(5, 2), 1, Vector2i(0, 0))
+	layer.set_cell(Vector2i(17, 2), 1, Vector2i(3, 0))
+	layer.set_cell(Vector2i(29, 2), 1, Vector2i(6, 0))
+	layer.set_cell(Vector2i(7, 17), 1, Vector2i(1, 1))
+	layer.set_cell(Vector2i(27, 17), 1, Vector2i(4, 1))

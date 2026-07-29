@@ -1,17 +1,22 @@
-# 地图 TileSet 素材切割记录 V6
+# 地图模块化环境素材记录 V7
 
 更新时间：2026-07-29
 
-## 根因
+## 目标
 
-原始工业监狱图片 `prison_tileset_atlas_1024.png` 是 7×8 的素材联系表；其中上部结构素材与下部道具素材的行高不同。它不是等分 12×12 TileMap 图集。此前按统一 12×12 网格重采样，导致选择框与素材边界错位。
+建立可从任意方向拼接的工业监狱环境套件：地板、墙体、内外转角、门、灯具和管线均遵循同一 48×48 网格与同一材质边缘规则。
 
-## 最终方案
+## 最终结构
 
-- 原始美术保留不变，作为只读源文件。
-- 使用 `scripts/tools/slice_prison_contact_sheet.gd` 按原图实际边界逐一裁出 56 张完整素材。
-- 每张素材以最近邻方式缩放进 48×48 单元，重新排为 `prison_tileset_sliced_48_v6.png`。
-- TileSet 只注册这一张 7×8 图集：56 个选择框、56 张完整原始素材，一格对应一物。
-- `scripts/tools/audit_prison_tileset.gd` 会验证全部 56 格均可选，并验证 `cell_block_a2_tilemap.tscn` 可加载且三层已绘制。
+- `prison_modular_structure_raw_v1.png`：AI 生成的结构母版。
+- `prison_modular_structure_48_v4.png`：正式 16×8 结构图集。直墙被派生为四个方向；四个角的两条连接边从对应直墙复制并锁定。
+- `prison_modular_props_48_v1.png`：正式 8×8 透明装饰图集。红灯、青灯、管线等不再携带任何墙面或地面背景。
+- `prison_modular_seam_preview_v4.png`：四方向房间闭合验收图。
+- `cell_block_a2_modular_preview_v1.png`：完整地图拼接验收图。
 
-这套方案不重新绘制、不替换、不合成原美术；只去掉联系表的空白间隔并做统一像素尺寸转换，使其可以稳定用于 Godot TileMap。
+## 验收规则
+
+1. 横墙接横墙、竖墙接竖墙、转角接两侧直墙均不得出现黑缝、透明缝、重复外框或厚度跳变。
+2. 墙体只由源 0 负责；源 1 的装饰只能作为透明覆盖物。
+3. 地板仅由 `FloorLayer` 绘制；门框仅由 `DoorFrameLayer` 绘制。
+4. `audit_prison_tileset.gd` 必须通过：结构 128 格、装饰 64 格、地图三层均可加载。
