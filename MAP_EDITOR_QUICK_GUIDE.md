@@ -1,10 +1,10 @@
 # 地图编辑器快速指南
 
-打开 `scenes/maps/cell_block_a2_tilemap.tscn` 后：
+打开 `scenes/maps/cell_block_a2_tilemap.tscn`，选择需要绘制的 `TileMapLayer`。
 
-1. `FloorLayer`、`WallLayer`、`DoorFrameLayer` 选择 TileSet 来源 0 的建筑素材。
-2. `DecorationLayer` 选择 TileSet 来源 1 的标准化装饰素材。
-3. 来源 1 对应原图第 5–11 行；每个素材都是透明、等比、居中的 48×48 单元。
-4. 灯具、管道、终端和血迹不参与碰撞与遮光；墙体仍只使用来源 0 的结构瓦片。
+1. `FloorLayer`、`WallLayer`、`DoorFrameLayer` 使用源 0；它保留了完整的 12×12 原始工业图集。
+2. `DecorationLayer` 使用源 1；第 5～11 行的装饰已按透明画布、最近邻缩放方式整理。
+3. 源 1 的普通素材使用 48×48 选择框；横向格栅、管线等大型素材使用 96×48 的 2×1 选择框。它们只能按整数倍格子放置。
+4. 灯具、管线、终端和血迹只用于视觉装饰，不带碰撞或遮光；墙体仍应使用源 0 的结构图块。
 
-当前灰色覆盖仍属于 Godot TileMap 编辑器的选择/绘制预览，不属于运行时地板材质。
+编辑器中的灰色覆盖是 TileMap 的选择/绘制预览，不是游戏运行时的地板材质。

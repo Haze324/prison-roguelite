@@ -1,6 +1,7 @@
 extends SceneTree
 
-## TileSet 由两套同为 48×48 的图集组成：建筑材质和标准化装饰。
+## Source 0 保留所有 12×12 原始单格，确保任意位置都可选择。
+## Source 1 提供第 5～11 行已标准化的装饰，其中大型素材使用整数倍选择框。
 const STRUCTURE_ATLAS_PATH: String = "res://assets/generated/tilesets/industrial_prison/prison_tileset_atlas_material_48_v4.png"
 const PROPS_ATLAS_PATH: String = "res://assets/generated/tilesets/industrial_prison/prison_props_normalized_48_v7.png"
 const OUTPUT_PATH: String = "res://resources/maps/prison_tileset_v1.tres"
@@ -8,19 +9,25 @@ const TILE_SIZE: Vector2i = Vector2i(48, 48)
 const GRID_COLUMNS: int = 12
 const GRID_ROWS: int = 12
 const PROPS_ROWS: int = 7
+const MULTI_PROP_RECTS: Array[Rect2i] = [
+	Rect2i(2, 1, 2, 1), Rect2i(4, 1, 2, 1),
+	Rect2i(0, 2, 2, 1), Rect2i(2, 2, 2, 1), Rect2i(4, 2, 2, 1),
+	Rect2i(10, 3, 2, 1), Rect2i(9, 4, 2, 1),
+	Rect2i(7, 5, 2, 1), Rect2i(9, 5, 2, 1),
+	Rect2i(7, 6, 2, 1), Rect2i(9, 6, 2, 1),
+]
 
 func _initialize() -> void:
 	var structure_texture: Texture2D = load(STRUCTURE_ATLAS_PATH) as Texture2D
 	if structure_texture == null:
-		push_error("无法加载建筑材质图集: " + STRUCTURE_ATLAS_PATH)
+		push_error("无法加载基础图集: " + STRUCTURE_ATLAS_PATH)
 		quit(1)
 		return
-	var props_image: Image = Image.load_from_file(ProjectSettings.globalize_path(PROPS_ATLAS_PATH))
-	if props_image == null or props_image.is_empty():
+	var props_texture: Texture2D = load(PROPS_ATLAS_PATH) as Texture2D
+	if props_texture == null:
 		push_error("无法加载标准化装饰图集: " + PROPS_ATLAS_PATH)
 		quit(1)
 		return
-	var props_texture: Texture2D = ImageTexture.create_from_image(props_image)
 
 	var tile_set: TileSet = TileSet.new()
 	tile_set.tile_size = TILE_SIZE
@@ -37,27 +44,35 @@ func _initialize() -> void:
 	structures.texture = structure_texture
 	structures.texture_region_size = TILE_SIZE
 	for y in range(GRID_ROWS):
-		if y >= 4 and y <= 10:
-			continue
 		for x in range(GRID_COLUMNS):
 			structures.create_tile(Vector2i(x, y))
 	tile_set.add_source(structures, 0)
 	for y in range(GRID_ROWS):
-		if y >= 4 and y <= 10:
-			continue
 		for x in range(GRID_COLUMNS):
 			_configure_structure_tile(structures, Vector2i(x, y))
 
 	var props: TileSetAtlasSource = TileSetAtlasSource.new()
 	props.texture = props_texture
 	props.texture_region_size = TILE_SIZE
+	for rect: Rect2i in MULTI_PROP_RECTS:
+		props.create_tile(rect.position, rect.size)
 	for y in range(PROPS_ROWS):
 		for x in range(GRID_COLUMNS):
-			props.create_tile(Vector2i(x, y))
+			var cell: Vector2i = Vector2i(x, y)
+			if _is_covered_by_multi(cell):
+				continue
+			props.create_tile(cell)
 	tile_set.add_source(props, 1)
+	for rect: Rect2i in MULTI_PROP_RECTS:
+		var multi_data: TileData = props.get_tile_data(rect.position, 0)
+		if multi_data != null:
+			multi_data.set_custom_data("tile_role", "decoration_multicell")
 	for y in range(PROPS_ROWS):
 		for x in range(GRID_COLUMNS):
-			var prop_data: TileData = props.get_tile_data(Vector2i(x, y), 0)
+			var cell: Vector2i = Vector2i(x, y)
+			if _is_covered_by_multi(cell):
+				continue
+			var prop_data: TileData = props.get_tile_data(cell, 0)
 			if prop_data != null:
 				prop_data.set_custom_data("tile_role", "decoration")
 
@@ -68,6 +83,12 @@ func _initialize() -> void:
 		return
 	print("PRISON TILESET BUILT: " + OUTPUT_PATH)
 	quit(0)
+
+func _is_covered_by_multi(cell: Vector2i) -> bool:
+	for rect: Rect2i in MULTI_PROP_RECTS:
+		if rect.has_point(cell):
+			return true
+	return false
 
 func _configure_structure_tile(atlas: TileSetAtlasSource, coords: Vector2i) -> void:
 	var data: TileData = atlas.get_tile_data(coords, 0)

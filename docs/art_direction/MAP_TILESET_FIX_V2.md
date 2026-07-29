@@ -1,16 +1,17 @@
-# 地图 TileSet 材质与网格修复记录 V4
+# 地图 TileSet 材质与网格修复记录 V5
 
 更新时间：2026-07-29
 
 ## 修复内容
 
-- 正式图集恢复原先的工业监狱材质，不再使用简化的程序化砖块图集。
-- 原始材质图实际为 12×12 网格。建筑材质保留原始拼接关系；原图第 5–11 行的装饰主体单独归一化为透明、等比、居中的 48×48 单元。
-- 正式图集：`assets/generated/tilesets/industrial_prison/prison_tileset_atlas_material_48_v4.png`。
+- 正式图集继续使用原有工业监狱素材，不使用简化的程序砖块图集。
+- 原图按 12×12 网格切分，建筑源的 144 个格子全部保留为可选择的 48×48 图块。
+- 原图第 5～11 行作为装饰源重新整理：普通素材占用 1×1；本身跨两格的横向格栅、管线与组件先合并，再注册为 2×1（96×48）图块。
+- 所有可放置素材的选择框均为 48×48 的整数倍，不再出现“一个图块被两个选择框拆开”或无法选中的区域。
 - TileSet：`resources/maps/prison_tileset_v1.tres`。
-- 地图墙体仍由 `TileMapLayer` 负责，墙体瓦片负责碰撞和遮光，门框层只负责视觉。
-- 旧的 `prison_tileset_atomic_48_v3.png` 保留为回退参考，不再作为运行时材质源。
+- 建筑源：`assets/generated/tilesets/industrial_prison/prison_tileset_atlas_material_48_v4.png`。
+- 装饰源：`assets/generated/tilesets/industrial_prison/prison_props_normalized_48_v7.png`。
 
-## 视觉原则
+## 视觉与编辑原则
 
-材质、锈蚀、裂纹、管道、灯具和警示色以原工业监狱图集为准；网格尺寸和碰撞配置独立处理，不能为了方便编辑而牺牲原始美术质量。
+原始工业材质、锈蚀、裂纹、管线与警示色保持不变；尺寸规范和碰撞配置独立处理，不能为了编辑便利而替换已经确认的美术风格。装饰不参与碰撞与遮光，墙体图块才承担这两项功能。
