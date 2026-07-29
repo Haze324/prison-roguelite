@@ -1,0 +1,591 @@
+[gd_scene format=3 uid="uid://dxdyghw88gm0e"]
+
+[ext_resource type="Script" path="res://scripts/systems/map_root.gd" id="1_root"]
+[ext_resource type="Script" path="res://scripts/entities/map_surface.gd" id="2_surface"]
+[ext_resource type="Script" uid="uid://bvh1bdg640udy" path="res://scripts/entities/wall.gd" id="3_wall"]
+[ext_resource type="Script" path="res://scripts/entities/map_light.gd" id="4_light"]
+[ext_resource type="Script" uid="uid://l3pfhx8i578m" path="res://scripts/entities/map_marker.gd" id="5_marker"]
+[ext_resource type="Script" path="res://scripts/entities/map_prop.gd" id="6_prop"]
+[ext_resource type="Script" uid="uid://e0odqxilqdp1" path="res://scripts/entities/map_door.gd" id="7_door"]
+[ext_resource type="Script" uid="uid://1isqup4pajaf" path="res://scripts/entities/legacy_geometry.gd" id="8_legacy"]
+[ext_resource type="Script" uid="uid://g8md1ufqhd5o" path="res://scripts/systems/merchant.gd" id="9_merchant"]
+[ext_resource type="Script" path="res://scripts/systems/respawn_point.gd" id="10_respawn"]
+[ext_resource type="Script" uid="uid://x8lk1h6qaiel" path="res://scripts/systems/skill_terminal.gd" id="11_skill"]
+[ext_resource type="Script" uid="uid://bght3b76hopfh" path="res://scripts/systems/corpse_npc.gd" id="12_corpse"]
+[ext_resource type="PackedScene" path="res://scenes/maps/cell_block_a2_tilemap.tscn" id="13_tilemap"]
+
+[node name="CellBlockA2" type="Node2D" unique_id=1200204793]
+script = ExtResource("1_root")
+map_id = "cell_block_a2"
+
+[node name="FloorVisual" type="Node2D" parent="." unique_id=744783631]
+visible = false
+z_index = -20
+script = ExtResource("2_surface")
+room_rects = Array[Rect2]([Rect2(0, 0, 510, 400), Rect2(590, 0, 514, 430), Rect2(1190, 0, 490, 430), Rect2(0, 576, 528, 528), Rect2(576, 576, 528, 528), Rect2(1200, 576, 528, 528)])
+corridor_rects = Array[Rect2]([Rect2(470, 190, 170, 70), Rect2(1020, 200, 210, 70), Rect2(250, 370, 70, 250), Rect2(820, 390, 70, 240), Rect2(500, 730, 190, 70), Rect2(1040, 730, 190, 70)])
+floor_color = Color(0.055, 0.07, 0.075, 1)
+accent_color = Color(0.16, 0.25, 0.26, 1)
+
+[node name="Geometry" type="Node2D" parent="." unique_id=1877015494]
+visible = false
+script = ExtResource("8_legacy")
+metadata/legacy_geometry_disabled = true
+
+[node name="GeometryClean" type="Node2D" parent="." unique_id=2040464269]
+metadata/legacy_geometry_disabled = true
+
+[node name="NorthBoundary" type="StaticBody2D" parent="GeometryClean" unique_id=801298681]
+z_index = 1
+position = Vector2(840, 48)
+script = ExtResource("3_wall")
+
+[node name="WestBoundary" type="StaticBody2D" parent="GeometryClean" unique_id=114447690]
+z_index = 1
+position = Vector2(122, 561)
+script = ExtResource("3_wall")
+size = Vector2(240, 32)
+
+[node name="EastBoundary" type="StaticBody2D" parent="GeometryClean" unique_id=1800719248]
+z_index = 1
+position = Vector2(1632, 540)
+script = ExtResource("3_wall")
+wall_variant = 2
+
+[node name="SouthBoundary" type="StaticBody2D" parent="GeometryClean" unique_id=1588889626]
+z_index = 1
+position = Vector2(840, 972)
+script = ExtResource("3_wall")
+wall_variant = 1
+
+[node name="CellBlockTop" type="StaticBody2D" parent="GeometryClean" unique_id=1837408237]
+z_index = 1
+position = Vector2(291, 84)
+script = ExtResource("3_wall")
+size = Vector2(32, 150)
+wall_variant = 1
+
+[node name="CellBlockLeft" type="StaticBody2D" parent="GeometryClean" unique_id=1527167166]
+z_index = 1
+position = Vector2(143, 84)
+script = ExtResource("3_wall")
+size = Vector2(32, 150)
+wall_variant = 1
+
+[node name="CellBlockRightTop" type="StaticBody2D" parent="GeometryClean" unique_id=1847790608]
+z_index = 1
+position = Vector2(520, 83)
+script = ExtResource("3_wall")
+size = Vector2(32, 150)
+wall_variant = 1
+
+[node name="CellBlockRightBottom" type="StaticBody2D" parent="GeometryClean" unique_id=359966607]
+z_index = 1
+position = Vector2(520, 330)
+script = ExtResource("3_wall")
+size = Vector2(32, 100)
+wall_variant = 1
+
+[node name="CellBlockBottomLeft" type="StaticBody2D" parent="GeometryClean" unique_id=770401441]
+z_index = 1
+position = Vector2(130, 399)
+script = ExtResource("3_wall")
+size = Vector2(255, 32)
+wall_variant = 1
+
+[node name="CellBlockBottomRight" type="StaticBody2D" parent="GeometryClean" unique_id=1305880205]
+z_index = 1
+position = Vector2(416, 399)
+script = ExtResource("3_wall")
+size = Vector2(200, 32)
+wall_variant = 1
+
+[node name="CentralTop" type="StaticBody2D" parent="GeometryClean" unique_id=365169467]
+z_index = 1
+position = Vector2(840, 70)
+script = ExtResource("3_wall")
+
+[node name="CentralLeftTop" type="StaticBody2D" parent="GeometryClean" unique_id=1134059775]
+z_index = 1
+position = Vector2(578, 82)
+script = ExtResource("3_wall")
+size = Vector2(32, 150)
+
+[node name="CentralLeftBottom" type="StaticBody2D" parent="GeometryClean" unique_id=1715446793]
+z_index = 1
+position = Vector2(579, 357)
+script = ExtResource("3_wall")
+size = Vector2(32, 140)
+
+[node name="CentralRightTop" type="StaticBody2D" parent="GeometryClean" unique_id=730847717]
+z_index = 1
+position = Vector2(1100, 135)
+script = ExtResource("3_wall")
+
+[node name="CentralRightBottom" type="StaticBody2D" parent="GeometryClean" unique_id=1500222891]
+z_index = 1
+position = Vector2(1100, 350)
+script = ExtResource("3_wall")
+
+[node name="CentralBottomLeft" type="StaticBody2D" parent="GeometryClean" unique_id=1703849300]
+z_index = 1
+position = Vector2(708, 433)
+script = ExtResource("3_wall")
+size = Vector2(230, 32)
+
+[node name="CentralBottomRight" type="StaticBody2D" parent="GeometryClean" unique_id=1513175130]
+z_index = 1
+position = Vector2(999, 433)
+script = ExtResource("3_wall")
+size = Vector2(220, 32)
+
+[node name="WardenTop" type="StaticBody2D" parent="GeometryClean" unique_id=2101762486]
+z_index = 1
+position = Vector2(1385, 70)
+script = ExtResource("3_wall")
+wall_variant = 2
+
+[node name="WardenLeftTop" type="StaticBody2D" parent="GeometryClean" unique_id=1611851186]
+z_index = 1
+position = Vector2(1180, 135)
+script = ExtResource("3_wall")
+wall_variant = 2
+
+[node name="WardenLeftBottom" type="StaticBody2D" parent="GeometryClean" unique_id=1135030048]
+z_index = 1
+position = Vector2(1180, 350)
+script = ExtResource("3_wall")
+wall_variant = 2
+
+[node name="WardenRight" type="StaticBody2D" parent="GeometryClean" unique_id=461888023]
+z_index = 1
+position = Vector2(1590, 250)
+script = ExtResource("3_wall")
+wall_variant = 2
+
+[node name="WardenBottom" type="StaticBody2D" parent="GeometryClean" unique_id=1582999552]
+z_index = 1
+position = Vector2(1385, 430)
+script = ExtResource("3_wall")
+wall_variant = 2
+
+[node name="SafehouseTopLeft" type="StaticBody2D" parent="GeometryClean" unique_id=2026391631]
+z_index = 1
+position = Vector2(69, 718)
+script = ExtResource("3_wall")
+wall_variant = 1
+
+[node name="SafehouseTopRight" type="StaticBody2D" parent="GeometryClean" unique_id=88654094]
+z_index = 1
+position = Vector2(295, 718)
+script = ExtResource("3_wall")
+wall_variant = 1
+
+[node name="SafehouseLeft" type="StaticBody2D" parent="GeometryClean" unique_id=517712120]
+z_index = 1
+position = Vector2(280, 958)
+script = ExtResource("3_wall")
+size = Vector2(32, 100)
+wall_variant = 1
+
+[node name="SafehouseRightTop" type="StaticBody2D" parent="GeometryClean" unique_id=1810895631]
+z_index = 1
+position = Vector2(441, 562)
+script = ExtResource("3_wall")
+size = Vector2(180, 32)
+wall_variant = 1
+
+[node name="SafehouseRightBottom" type="StaticBody2D" parent="GeometryClean" unique_id=410228552]
+z_index = 1
+position = Vector2(570, 860)
+script = ExtResource("3_wall")
+wall_variant = 1
+
+[node name="SafehouseBottom" type="StaticBody2D" parent="GeometryClean" unique_id=1177226565]
+z_index = 1
+position = Vector2(132, 924)
+script = ExtResource("3_wall")
+size = Vector2(250, 32)
+wall_variant = 1
+
+[node name="LowerCentralTopLeft" type="StaticBody2D" parent="GeometryClean" unique_id=1258271847]
+z_index = 1
+position = Vector2(691, 561)
+script = ExtResource("3_wall")
+size = Vector2(200, 32)
+
+[node name="LowerCentralTopRight" type="StaticBody2D" parent="GeometryClean" unique_id=1588380112]
+z_index = 1
+position = Vector2(985, 570)
+script = ExtResource("3_wall")
+
+[node name="LowerCentralLeftTop" type="StaticBody2D" parent="GeometryClean" unique_id=447767164]
+z_index = 1
+position = Vector2(640, 650)
+script = ExtResource("3_wall")
+
+[node name="LowerCentralLeftBottom" type="StaticBody2D" parent="GeometryClean" unique_id=1129661875]
+z_index = 1
+position = Vector2(640, 860)
+script = ExtResource("3_wall")
+
+[node name="LowerCentralRightTop" type="StaticBody2D" parent="GeometryClean" unique_id=1493313689]
+z_index = 1
+position = Vector2(1090, 650)
+script = ExtResource("3_wall")
+
+[node name="LowerCentralRightBottom" type="StaticBody2D" parent="GeometryClean" unique_id=917354478]
+z_index = 1
+position = Vector2(1090, 860)
+script = ExtResource("3_wall")
+
+[node name="LowerCentralBottom" type="StaticBody2D" parent="GeometryClean" unique_id=1001043862]
+z_index = 1
+position = Vector2(865, 920)
+script = ExtResource("3_wall")
+
+[node name="SupplyTop" type="StaticBody2D" parent="GeometryClean" unique_id=1110528885]
+z_index = 1
+position = Vector2(1380, 590)
+script = ExtResource("3_wall")
+wall_variant = 2
+
+[node name="SupplyLeftTop" type="StaticBody2D" parent="GeometryClean" unique_id=1810140208]
+z_index = 1
+position = Vector2(1180, 660)
+script = ExtResource("3_wall")
+wall_variant = 2
+
+[node name="SupplyLeftBottom" type="StaticBody2D" parent="GeometryClean" unique_id=1116203623]
+z_index = 1
+position = Vector2(1180, 870)
+script = ExtResource("3_wall")
+wall_variant = 2
+
+[node name="SupplyRight" type="StaticBody2D" parent="GeometryClean" unique_id=982996509]
+z_index = 1
+position = Vector2(1580, 765)
+script = ExtResource("3_wall")
+wall_variant = 2
+
+[node name="SupplyBottom" type="StaticBody2D" parent="GeometryClean" unique_id=1402986168]
+z_index = 1
+position = Vector2(1380, 940)
+script = ExtResource("3_wall")
+wall_variant = 2
+
+[node name="CellCorridorTop" type="StaticBody2D" parent="GeometryClean" unique_id=497317656]
+z_index = 1
+position = Vector2(550, 180)
+script = ExtResource("3_wall")
+wall_variant = 1
+
+[node name="CellCorridorBottom" type="StaticBody2D" parent="GeometryClean" unique_id=1986924080]
+z_index = 1
+position = Vector2(550, 270)
+script = ExtResource("3_wall")
+wall_variant = 1
+
+[node name="WardenCorridorTop" type="StaticBody2D" parent="GeometryClean" unique_id=1668974631]
+z_index = 1
+position = Vector2(1140, 190)
+script = ExtResource("3_wall")
+wall_variant = 2
+
+[node name="WardenCorridorBottom" type="StaticBody2D" parent="GeometryClean" unique_id=46814867]
+z_index = 1
+position = Vector2(1140, 280)
+script = ExtResource("3_wall")
+wall_variant = 2
+
+[node name="CellVerticalLeft" type="StaticBody2D" parent="GeometryClean" unique_id=1672108645]
+z_index = 1
+position = Vector2(241, 496)
+script = ExtResource("3_wall")
+size = Vector2(32, 160)
+wall_variant = 1
+
+[node name="CellVerticalRight" type="StaticBody2D" parent="GeometryClean" unique_id=115140468]
+z_index = 1
+position = Vector2(331, 497)
+script = ExtResource("3_wall")
+size = Vector2(32, 160)
+wall_variant = 1
+
+[node name="CentralVerticalLeft" type="StaticBody2D" parent="GeometryClean" unique_id=314986345]
+z_index = 1
+position = Vector2(810, 512)
+script = ExtResource("3_wall")
+size = Vector2(32, 150)
+
+[node name="CentralVerticalRight" type="StaticBody2D" parent="GeometryClean" unique_id=982443520]
+z_index = 1
+position = Vector2(906, 512)
+script = ExtResource("3_wall")
+size = Vector2(32, 150)
+
+[node name="SafehouseCorridorTop" type="StaticBody2D" parent="GeometryClean" unique_id=495445934]
+z_index = 1
+position = Vector2(605, 720)
+script = ExtResource("3_wall")
+wall_variant = 1
+
+[node name="SafehouseCorridorBottom" type="StaticBody2D" parent="GeometryClean" unique_id=1191291738]
+z_index = 1
+position = Vector2(605, 810)
+script = ExtResource("3_wall")
+wall_variant = 1
+
+[node name="SupplyCorridorTop" type="StaticBody2D" parent="GeometryClean" unique_id=2104114984]
+z_index = 1
+position = Vector2(1140, 720)
+script = ExtResource("3_wall")
+wall_variant = 2
+
+[node name="SupplyCorridorBottom" type="StaticBody2D" parent="GeometryClean" unique_id=1271561172]
+z_index = 1
+position = Vector2(1140, 810)
+script = ExtResource("3_wall")
+wall_variant = 2
+
+[node name="PowerDoor" type="StaticBody2D" parent="GeometryClean" unique_id=1355296456]
+position = Vector2(1140, 235)
+script = ExtResource("7_door")
+gate_type = "pass_gate"
+
+[node name="Architecture" type="Node2D" parent="." unique_id=2027555739]
+
+[node name="Shelf_01" type="StaticBody2D" parent="Architecture" unique_id=623639854]
+position = Vector2(164, 238)
+script = ExtResource("6_prop")
+prop_type = "shelf"
+size = Vector2(100, 34)
+
+[node name="Generator" type="StaticBody2D" parent="Architecture" unique_id=877009152]
+position = Vector2(988, 886)
+script = ExtResource("6_prop")
+prop_type = "generator"
+size = Vector2(56, 42)
+solid = false
+prop_color = Color(0.12, 0.2, 0.2, 1)
+
+[node name="GeneratorWest" type="StaticBody2D" parent="Architecture" unique_id=780540116]
+position = Vector2(738, 103)
+script = ExtResource("6_prop")
+prop_type = "generator"
+size = Vector2(56, 42)
+solid = false
+prop_color = Color(0.12, 0.2, 0.2, 1)
+
+[node name="GeneratorEast" type="StaticBody2D" parent="Architecture" unique_id=1193506558]
+position = Vector2(1400, 220)
+script = ExtResource("6_prop")
+prop_type = "generator"
+size = Vector2(56, 42)
+solid = false
+prop_color = Color(0.12, 0.2, 0.2, 1)
+
+[node name="CellShelves" type="StaticBody2D" parent="Architecture" unique_id=1928194568]
+position = Vector2(56, 294)
+script = ExtResource("6_prop")
+prop_type = "shelf"
+size = Vector2(92, 30)
+
+[node name="CentralConsole" type="StaticBody2D" parent="Architecture" unique_id=1875242958]
+position = Vector2(970, 340)
+script = ExtResource("6_prop")
+prop_type = "console"
+size = Vector2(88, 38)
+
+[node name="WardenDesk" type="StaticBody2D" parent="Architecture" unique_id=1164659268]
+position = Vector2(1450, 350)
+script = ExtResource("6_prop")
+prop_type = "shelf"
+size = Vector2(104, 48)
+
+[node name="Crates" type="StaticBody2D" parent="Architecture" unique_id=413419442]
+position = Vector2(980, 760)
+script = ExtResource("6_prop")
+size = Vector2(104, 68)
+
+[node name="SupplyShelf" type="StaticBody2D" parent="Architecture" unique_id=792591673]
+position = Vector2(1343, 882)
+script = ExtResource("6_prop")
+prop_type = "shelf"
+size = Vector2(112, 36)
+
+[node name="Decoration" type="Node2D" parent="." unique_id=1817709856]
+
+[node name="Lighting" type="Node2D" parent="." unique_id=1589826479]
+
+[node name="Warning_01" type="Node2D" parent="Lighting" unique_id=1527435713]
+position = Vector2(67, 31)
+script = ExtResource("4_light")
+light_type = "warning"
+light_color = Color(1, 0.18, 0.12, 1)
+energy = 1.25
+texture_scale = 1.2
+flicker_enabled = true
+
+[node name="Warning_02" type="Node2D" parent="Lighting" unique_id=1755940556]
+position = Vector2(1430, 120)
+script = ExtResource("4_light")
+light_type = "warning"
+light_color = Color(1, 0.18, 0.12, 1)
+energy = 1.15
+texture_scale = 1.1
+flicker_enabled = true
+
+[node name="PowerGlow_01" type="Node2D" parent="Lighting" unique_id=2132139501]
+position = Vector2(738, 133)
+script = ExtResource("4_light")
+light_type = "power"
+light_color = Color(0.25, 0.95, 0.85, 1)
+energy = 1.35
+texture_scale = 1.1
+
+[node name="PowerGlow_02" type="Node2D" parent="Lighting" unique_id=1520306585]
+position = Vector2(948, 886)
+script = ExtResource("4_light")
+light_type = "power"
+light_color = Color(0.25, 0.95, 0.85, 1)
+energy = 1.35
+texture_scale = 1.15
+
+[node name="PowerGlow_03" type="Node2D" parent="Lighting" unique_id=1096936152]
+position = Vector2(1360, 220)
+script = ExtResource("4_light")
+light_type = "power"
+light_color = Color(0.25, 0.95, 0.85, 1)
+energy = 1.35
+texture_scale = 1.15
+
+[node name="PracticalCentral" type="Node2D" parent="Lighting" unique_id=717152932]
+position = Vector2(760, 720)
+script = ExtResource("4_light")
+light_color = Color(1, 0.68, 0.36, 1)
+energy = 0.58
+texture_scale = 0.85
+
+[node name="PracticalSupply" type="Node2D" parent="Lighting" unique_id=1827303559]
+position = Vector2(1360, 760)
+script = ExtResource("4_light")
+light_color = Color(1, 0.68, 0.36, 1)
+energy = 0.62
+texture_scale = 0.9
+
+[node name="BossGlow" type="Node2D" parent="Lighting" unique_id=389958680]
+position = Vector2(1380, 520)
+script = ExtResource("4_light")
+light_type = "boss"
+light_color = Color(0.95, 0.12, 0.12, 1)
+energy = 0.55
+texture_scale = 0.75
+
+[node name="RespawnGlow" type="Node2D" parent="Lighting" unique_id=729280999]
+position = Vector2(344, 819)
+script = ExtResource("4_light")
+light_color = Color(1, 0.64, 0.3, 1)
+energy = 1.05
+texture_scale = 1.2
+
+[node name="Facilities" type="Node2D" parent="." unique_id=523403170]
+
+[node name="Shop" type="Node2D" parent="Facilities" unique_id=177897974]
+position = Vector2(66, 1025)
+script = ExtResource("9_merchant")
+portrait_scale = 4.11
+invulnerable = null
+
+[node name="RespawnPoint" type="Node2D" parent="Facilities" unique_id=1880917484]
+position = Vector2(344, 819)
+script = ExtResource("10_respawn")
+point_id = 1
+
+[node name="SkillTerminal" type="Node2D" parent="Facilities" unique_id=983094033]
+position = Vector2(158, 1020)
+script = ExtResource("11_skill")
+
+[node name="Corpse" type="Node2D" parent="Facilities" unique_id=172243084]
+position = Vector2(52, 136)
+script = ExtResource("12_corpse")
+
+[node name="Markers" type="Node2D" parent="." unique_id=523403169]
+
+[node name="PlayerSpawn" type="Marker2D" parent="Markers" unique_id=1038996416]
+position = Vector2(86, 75)
+script = ExtResource("5_marker")
+marker_type = "player_spawn"
+
+[node name="Power_0" type="Marker2D" parent="Markers" unique_id=892772516]
+position = Vector2(738, 133)
+script = ExtResource("5_marker")
+
+[node name="Power_1" type="Marker2D" parent="Markers" unique_id=2051215476]
+position = Vector2(948, 886)
+script = ExtResource("5_marker")
+marker_id = 1
+
+[node name="Power_2" type="Marker2D" parent="Markers" unique_id=445293978]
+position = Vector2(1360, 220)
+script = ExtResource("5_marker")
+marker_id = 2
+
+[node name="Exit" type="Marker2D" parent="Markers" unique_id=855610651]
+position = Vector2(1480, 820)
+script = ExtResource("5_marker")
+marker_type = "exit"
+
+[node name="BossSpawn" type="Marker2D" parent="Markers" unique_id=1569002519]
+position = Vector2(1374, 674)
+script = ExtResource("5_marker")
+marker_type = "boss_spawn"
+
+[node name="PickupMedkit" type="Marker2D" parent="Markers" unique_id=93184160]
+position = Vector2(420, 700)
+script = ExtResource("5_marker")
+marker_type = "pickup"
+payload = "medkit"
+
+[node name="PickupAmmo" type="Marker2D" parent="Markers" unique_id=1473248775]
+position = Vector2(760, 650)
+script = ExtResource("5_marker")
+marker_type = "pickup"
+marker_id = 1
+payload = "ammo_box"
+
+[node name="PickupShotgun" type="Marker2D" parent="Markers" unique_id=424774010]
+position = Vector2(751, 335)
+script = ExtResource("5_marker")
+marker_type = "pickup"
+marker_id = 2
+payload = "shotgun"
+
+[node name="PickupMine" type="Marker2D" parent="Markers" unique_id=1115362235]
+position = Vector2(1440, 740)
+script = ExtResource("5_marker")
+marker_type = "pickup"
+marker_id = 3
+payload = "mine"
+
+[node name="EnemySpawn_0" type="Marker2D" parent="Markers" unique_id=849909460]
+position = Vector2(846, 684)
+script = ExtResource("5_marker")
+marker_type = "enemy_spawn"
+
+[node name="EnemySpawn_0" type="Marker2D" parent="Markers/EnemySpawn_0" unique_id=1652876840]
+position = Vector2(-453, -570)
+script = ExtResource("5_marker")
+marker_type = "enemy_spawn"
+
+[node name="EnemySpawn_1" type="Marker2D" parent="Markers/EnemySpawn_0" unique_id=1581983870]
+position = Vector2(-12, -478)
+script = ExtResource("5_marker")
+marker_type = "enemy_spawn"
+
+[node name="EnemySpawn_1" type="Marker2D" parent="Markers" unique_id=752774339]
+position = Vector2(1527, 148)
+script = ExtResource("5_marker")
+marker_type = "enemy_spawn"
+
+[node name="TileMapComposition" parent="." instance=ExtResource("13_tilemap")]

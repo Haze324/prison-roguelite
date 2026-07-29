@@ -1,19 +1,16 @@
 # TileSet 瓦片图例
 
-正式图集：`assets/generated/tilesets/industrial_prison/prison_tileset_atlas_material_48_v4.png`
+运行时结构图集：`assets/generated/tilesets/industrial_prison/prison_structure_atlas_48_v5.png`
 
-- 原始美术图实际是 12×12 个材质单元，不是 16×16。
-- 正式 TileSet 将每个材质单元裁切、缩放为严格的 48×48 像素。
-- 图集总尺寸为 576×576，Godot 选择框与一个瓦片严格 1:1。
-- TileSet 资源：`resources/maps/prison_tileset_v1.tres`。
+该图集固定为 3×2 格，总尺寸 144×96；每一格严格为 48×48 像素。它只包含可用于 TileMap 的完整结构瓦片，避免灯具、管道等跨格装饰混进地板工具。
 
-| 用途 | 图集坐标（列, 行） | 使用层 | 碰撞/遮光 |
-|---|---:|---|---|
-| 普通地面 | `(0, 0)` | `FloorLayer` | 否 |
-| 走廊地面 | `(1, 0)` | `FloorLayer` | 否 |
-| 横向墙 | `(0, 2)` | `WallLayer` | 是 |
-| 纵向墙 | `(1, 3)` | `WallLayer` | 是 |
-| 房间角点 | `(2, 3)` | `WallLayer` | 是 |
-| 门框装饰 | `(3, 4)` | `DoorFrameLayer` | 否 |
+| 图集坐标 | 用途 | 使用层 | 碰撞/遮光 |
+|---:|---|---|---|
+| `(0, 0)` | 普通地面 | `FloorLayer` | 否 |
+| `(1, 0)` | 走廊地面 | `FloorLayer` | 否 |
+| `(2, 0)` | 横向墙 | `WallLayer` | 是 |
+| `(0, 1)` | 纵向墙 | `WallLayer` | 是 |
+| `(1, 1)` | 房间转角 | `WallLayer` | 是 |
+| `(2, 1)` | 门框 | `DoorFrameLayer` | 否 |
 
-坐标从左上角开始，列和行都从 0 开始；每个源矩形均为 `(列 × 48, 行 × 48, 48, 48)`。
+完整 12×12 原材质图集 `prison_tileset_atlas_material_48_v4.png` 仅作视觉参考和后续独立装饰来源；红灯、青灯、管道等不允许绘制到 `FloorLayer`。
