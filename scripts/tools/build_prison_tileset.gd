@@ -1,21 +1,20 @@
 extends SceneTree
 
-## 将结构图集注册为 48×48 TileSet。
-## 图集仅含完整地面、墙体和门框，跨格装饰使用独立节点。
-const ATLAS_PATH: String = "res://assets/generated/tilesets/industrial_prison/prison_structure_atlas_48_v5.png"
+## 将完整工业监狱图集注册为统一 48×48 TileSet。
+## 原图的所有 12×12 个素材单元都已规范化为同一尺寸。
+const ATLAS_PATH: String = "res://assets/generated/tilesets/industrial_prison/prison_tileset_atlas_material_48_v4.png"
 const OUTPUT_PATH: String = "res://resources/maps/prison_tileset_v1.tres"
-const ATLAS_COLUMNS: int = 3
-const ATLAS_ROWS: int = 2
+const ATLAS_COLUMNS: int = 12
+const ATLAS_ROWS: int = 12
 const REGION_SIZE: Vector2i = Vector2i(48, 48)
 const MAP_TILE_SIZE: Vector2i = Vector2i(48, 48)
 
 func _initialize() -> void:
-	var image: Image = Image.load_from_file(ProjectSettings.globalize_path(ATLAS_PATH))
-	if image == null or image.is_empty():
+	var texture: Texture2D = load(ATLAS_PATH) as Texture2D
+	if texture == null:
 		push_error("无法加载 TileSet 图集: " + ATLAS_PATH)
 		quit(1)
 		return
-	var texture: Texture2D = ImageTexture.create_from_image(image)
 
 	var tile_set: TileSet = TileSet.new()
 	tile_set.tile_size = MAP_TILE_SIZE
@@ -68,13 +67,15 @@ func _configure_tile(atlas: TileSetAtlasSource, coords: Vector2i) -> void:
 	tile_data.set_occluder_polygon(0, 0, occluder)
 
 func _is_solid_tile(coords: Vector2i) -> bool:
-	return coords == Vector2i(2, 0) or coords == Vector2i(0, 1) or coords == Vector2i(1, 1)
+	return coords == Vector2i(0, 2) or coords == Vector2i(1, 3) or coords == Vector2i(2, 3)
 
 func _tile_role(coords: Vector2i) -> String:
 	if coords == Vector2i(0, 0) or coords == Vector2i(1, 0):
 		return "floor"
-	if coords == Vector2i(2, 0):
+	if coords == Vector2i(0, 2):
 		return "wall_horizontal"
-	if coords == Vector2i(0, 1) or coords == Vector2i(1, 1):
+	if coords == Vector2i(1, 3) or coords == Vector2i(2, 3):
 		return "wall_vertical_or_corner"
-	return "door_frame"
+	if coords == Vector2i(3, 4):
+		return "door_frame"
+	return "decoration"

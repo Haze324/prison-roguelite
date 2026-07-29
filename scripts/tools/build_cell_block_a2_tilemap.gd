@@ -8,10 +8,10 @@ const GRID_SIZE: Vector2i = Vector2i(35, 23)
 
 const FLOOR_TILE: Vector2i = Vector2i(0, 0)
 const CORRIDOR_TILE: Vector2i = Vector2i(1, 0)
-const HORIZONTAL_WALL_TILE: Vector2i = Vector2i(2, 0)
-const VERTICAL_WALL_TILE: Vector2i = Vector2i(0, 1)
-const CORNER_TILE: Vector2i = Vector2i(1, 1)
-const DOOR_TILE: Vector2i = Vector2i(2, 1)
+const HORIZONTAL_WALL_TILE: Vector2i = Vector2i(0, 2)
+const VERTICAL_WALL_TILE: Vector2i = Vector2i(1, 3)
+const CORNER_TILE: Vector2i = Vector2i(2, 3)
+const DOOR_TILE: Vector2i = Vector2i(3, 4)
 
 func _initialize() -> void:
 	var tile_set: TileSet = load(TILE_SET_PATH) as TileSet
