@@ -1,17 +1,17 @@
-# 地图 TileSet 材质与网格修复记录 V5
+# 地图 TileSet 素材切割记录 V6
 
 更新时间：2026-07-29
 
-## 修复内容
+## 根因
 
-- 正式图集继续使用原有工业监狱素材，不使用简化的程序砖块图集。
-- 原图按 12×12 网格切分，建筑源的 144 个格子全部保留为可选择的 48×48 图块。
-- 原图第 5～11 行作为装饰源重新整理：普通素材占用 1×1；本身跨两格的横向格栅、管线与组件先合并，再注册为 2×1（96×48）图块。
-- 所有可放置素材的选择框均为 48×48 的整数倍，不再出现“一个图块被两个选择框拆开”或无法选中的区域。
-- TileSet：`resources/maps/prison_tileset_v1.tres`。
-- 建筑源：`assets/generated/tilesets/industrial_prison/prison_tileset_atlas_material_48_v4.png`。
-- 装饰源：`assets/generated/tilesets/industrial_prison/prison_props_normalized_48_v7.png`。
+原始工业监狱图片 `prison_tileset_atlas_1024.png` 是 7×8 的素材联系表；其中上部结构素材与下部道具素材的行高不同。它不是等分 12×12 TileMap 图集。此前按统一 12×12 网格重采样，导致选择框与素材边界错位。
 
-## 视觉与编辑原则
+## 最终方案
 
-原始工业材质、锈蚀、裂纹、管线与警示色保持不变；尺寸规范和碰撞配置独立处理，不能为了编辑便利而替换已经确认的美术风格。装饰不参与碰撞与遮光，墙体图块才承担这两项功能。
+- 原始美术保留不变，作为只读源文件。
+- 使用 `scripts/tools/slice_prison_contact_sheet.gd` 按原图实际边界逐一裁出 56 张完整素材。
+- 每张素材以最近邻方式缩放进 48×48 单元，重新排为 `prison_tileset_sliced_48_v6.png`。
+- TileSet 只注册这一张 7×8 图集：56 个选择框、56 张完整原始素材，一格对应一物。
+- `scripts/tools/audit_prison_tileset.gd` 会验证全部 56 格均可选，并验证 `cell_block_a2_tilemap.tscn` 可加载且三层已绘制。
+
+这套方案不重新绘制、不替换、不合成原美术；只去掉联系表的空白间隔并做统一像素尺寸转换，使其可以稳定用于 Godot TileMap。
