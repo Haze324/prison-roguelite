@@ -1,15 +1,17 @@
 extends SceneTree
 
-## Converts the two AI-produced 8x8 master sheets into clean, gap-free Godot atlases.
+## Converts the AI-produced master sheets into clean Godot atlases using their actual grid bounds.
 ## Structure cells have a dark contact-sheet border; it is trimmed before every tile is normalized.
 const STRUCTURE_RAW_PATH: String = "res://assets/generated/tilesets/industrial_prison/prison_modular_structure_raw_v1.png"
 const PROPS_RAW_PATH: String = "res://assets/generated/tilesets/industrial_prison/prison_modular_props_alpha_v1.png"
 const STRUCTURE_OUTPUT_PATH: String = "res://assets/generated/tilesets/industrial_prison/prison_modular_structure_48_v1.png"
 const PROPS_OUTPUT_PATH: String = "res://assets/generated/tilesets/industrial_prison/prison_modular_props_48_v1.png"
 const TILE_SIZE: int = 48
-const SOURCE_CELL_SIZE: int = 128
-const SOURCE_BORDER: int = 5
-const SOURCE_INTERIOR_SIZE: int = 118
+const STRUCTURE_GRID_COLUMNS: int = 8
+const STRUCTURE_GRID_ROWS: int = 8
+const PROPS_GRID_COLUMNS: int = 9
+const PROPS_GRID_ROWS: int = 9
+const SOURCE_BORDER: int = 6
 const OUTPUT_COLUMNS: int = 16
 const OUTPUT_ROWS: int = 8
 
@@ -23,7 +25,7 @@ func _initialize() -> void:
 	var structure_atlas: Image = Image.create(OUTPUT_COLUMNS * TILE_SIZE, OUTPUT_ROWS * TILE_SIZE, false, Image.FORMAT_RGBA8)
 	structure_atlas.fill(Color("101214"))
 	_build_structure_atlas(structure_raw, structure_atlas)
-	var props_atlas: Image = Image.create(8 * TILE_SIZE, 8 * TILE_SIZE, false, Image.FORMAT_RGBA8)
+	var props_atlas: Image = Image.create(PROPS_GRID_COLUMNS * TILE_SIZE, PROPS_GRID_ROWS * TILE_SIZE, false, Image.FORMAT_RGBA8)
 	props_atlas.fill(Color.TRANSPARENT)
 	_build_props_atlas(props_raw, props_atlas)
 	var structure_error: Error = structure_atlas.save_png(ProjectSettings.globalize_path(STRUCTURE_OUTPUT_PATH))
@@ -32,7 +34,7 @@ func _initialize() -> void:
 		push_error("Could not save modular prison atlases")
 		quit(1)
 		return
-	print("MODULAR PRISON ATLASES BUILT: structure=16x8, props=8x8")
+	print("MODULAR PRISON ATLASES BUILT: structure=16x8, props=9x9")
 	quit(0)
 
 func _build_structure_atlas(source: Image, output: Image) -> void:
@@ -68,19 +70,25 @@ func _build_structure_atlas(source: Image, output: Image) -> void:
 		_write_tile(output, Vector2i(x + 8, 7), _structure_tile(source, Vector2i(x, 2)))
 
 func _build_props_atlas(source: Image, output: Image) -> void:
-	for y in range(8):
-		for x in range(8):
-			var cell: Image = source.get_region(Rect2i(x * SOURCE_CELL_SIZE, y * SOURCE_CELL_SIZE, SOURCE_CELL_SIZE, SOURCE_CELL_SIZE))
+	for y in range(PROPS_GRID_ROWS):
+		for x in range(PROPS_GRID_COLUMNS):
+			var cell: Image = _grid_cell(source, Vector2i(x, y), PROPS_GRID_COLUMNS, PROPS_GRID_ROWS, 0)
 			cell.convert(Image.FORMAT_RGBA8)
 			cell.resize(TILE_SIZE, TILE_SIZE, Image.INTERPOLATE_NEAREST)
 			_write_tile(output, Vector2i(x, y), cell)
 
 func _structure_tile(source: Image, coords: Vector2i) -> Image:
-	var position: Vector2i = coords * SOURCE_CELL_SIZE + Vector2i(SOURCE_BORDER, SOURCE_BORDER)
-	var cell: Image = source.get_region(Rect2i(position, Vector2i(SOURCE_INTERIOR_SIZE, SOURCE_INTERIOR_SIZE)))
+	var cell: Image = _grid_cell(source, coords, STRUCTURE_GRID_COLUMNS, STRUCTURE_GRID_ROWS, SOURCE_BORDER)
 	cell.convert(Image.FORMAT_RGBA8)
 	cell.resize(TILE_SIZE, TILE_SIZE, Image.INTERPOLATE_NEAREST)
 	return cell
+
+func _grid_cell(source: Image, coords: Vector2i, columns: int, rows: int, border: int) -> Image:
+	var x0: int = floori(float(coords.x) * float(source.get_width()) / float(columns)) + border
+	var y0: int = floori(float(coords.y) * float(source.get_height()) / float(rows)) + border
+	var x1: int = floori(float(coords.x + 1) * float(source.get_width()) / float(columns)) - border
+	var y1: int = floori(float(coords.y + 1) * float(source.get_height()) / float(rows)) - border
+	return source.get_region(Rect2i(x0, y0, x1 - x0, y1 - y0))
 
 func _rotated(source: Image, quarter_turns_clockwise: int) -> Image:
 	var copy: Image = source.duplicate()

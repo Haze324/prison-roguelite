@@ -1,45 +1,48 @@
 extends SceneTree
 
-## Validates the final modular environment sources and the authored cell-block map.
+## Validates the canonical 48px wall kit, its 16px edge geometry, and the authored map.
 const TILE_SET_PATH: String = "res://resources/maps/prison_tileset_v1.tres"
 const TILEMAP_SCENE_PATH: String = "res://scenes/maps/cell_block_a2_tilemap.tscn"
 const TILE_SIZE: int = 48
-const CONNECTOR_WIDTH: int = 4
+const WALL_WIDTH: int = 16
 const REQUIRED_STRUCTURE_TILES: Array[Vector2i] = [
-	Vector2i(0, 0), Vector2i(1, 1), Vector2i(9, 1),
-	Vector2i(1, 2), Vector2i(9, 2),
+	Vector2i(0, 0), Vector2i(3, 0),
+	Vector2i(0, 1), Vector2i(4, 1), Vector2i(0, 2), Vector2i(4, 2),
+	Vector2i(0, 3), Vector2i(1, 3), Vector2i(2, 3), Vector2i(3, 3),
+	Vector2i(0, 4), Vector2i(1, 4), Vector2i(2, 4), Vector2i(3, 4), Vector2i(4, 4), Vector2i(5, 4),
 	Vector2i(0, 5), Vector2i(1, 5), Vector2i(2, 5), Vector2i(3, 5),
 ]
 
 func _initialize() -> void:
 	var tile_set: TileSet = load(TILE_SET_PATH) as TileSet
-	if tile_set == null:
-		push_error("Modular TileSet audit failed: resource could not load")
-		quit(1)
-		return
-	var structure: TileSetAtlasSource = tile_set.get_source(0) as TileSetAtlasSource
-	var props: TileSetAtlasSource = tile_set.get_source(1) as TileSetAtlasSource
 	var failures: Array[String] = []
-	if structure == null or props == null:
-		failures.append("missing structure or props source")
+	if tile_set == null:
+		failures.append("TileSet resource could not load")
 	else:
-		if structure.texture_region_size != Vector2i(48, 48) or props.texture_region_size != Vector2i(48, 48):
-			failures.append("atlas regions are not 48x48")
-		if structure.get_tiles_count() != 128:
-			failures.append("structure count=" + str(structure.get_tiles_count()))
-		if props.get_tiles_count() != 64:
-			failures.append("props count=" + str(props.get_tiles_count()))
-		for coords in REQUIRED_STRUCTURE_TILES:
-			if not structure.has_tile(coords):
-				failures.append("missing structural tile=" + str(coords))
-		var structure_image: Image = structure.texture.get_image()
-		if structure_image == null or structure_image.is_empty():
-			failures.append("structure texture pixels are unavailable for connector audit")
+		var structure: TileSetAtlasSource = tile_set.get_source(0) as TileSetAtlasSource
+		var props: TileSetAtlasSource = tile_set.get_source(1) as TileSetAtlasSource
+		if structure == null or props == null:
+			failures.append("missing structure or props source")
 		else:
-			_validate_corner_connectors(structure_image, failures)
-		var prop_data: TileData = props.get_tile_data(Vector2i(0, 0), 0)
-		if prop_data == null or prop_data.get_custom_data("tile_role") != "wall_prop_overlay":
-			failures.append("props are not registered as overlays")
+			if structure.texture_region_size != Vector2i(TILE_SIZE, TILE_SIZE) or props.texture_region_size != Vector2i(TILE_SIZE, TILE_SIZE):
+				failures.append("atlas regions are not 48x48")
+			if structure.get_tiles_count() != 34:
+				failures.append("wall kit count=" + str(structure.get_tiles_count()) + ", expected 34")
+			if props.get_tiles_count() != 81:
+				failures.append("props count=" + str(props.get_tiles_count()) + ", expected 81")
+			for coords in REQUIRED_STRUCTURE_TILES:
+				if not structure.has_tile(coords):
+					failures.append("missing wall kit tile=" + str(coords))
+			_validate_roles(structure, failures)
+			var structure_image: Image = structure.texture.get_image()
+			if structure_image == null or structure_image.is_empty():
+				failures.append("wall kit pixels unavailable")
+			else:
+				_validate_geometry(structure_image, failures)
+			var prop_data: TileData = props.get_tile_data(Vector2i(0, 0), 0)
+			if prop_data == null or prop_data.get_custom_data("tile_role") != "wall_prop_overlay":
+				failures.append("props are not registered as overlays")
+
 	var tilemap_scene: PackedScene = load(TILEMAP_SCENE_PATH) as PackedScene
 	if tilemap_scene == null:
 		failures.append("tilemap scene could not load")
@@ -54,46 +57,57 @@ func _initialize() -> void:
 			failures.append("tilemap layers are not painted")
 		tilemap_root.free()
 	if not failures.is_empty():
-		push_error("Modular TileSet audit failed: " + "; ".join(failures))
+		push_error("Wall kit audit failed: " + "; ".join(failures))
 		quit(1)
 		return
-	print("MODULAR PRISON TILESET AUDIT PASS: structure=128 props=64 four-direction corners and map layers load")
+	print("WALL KIT AUDIT PASS: 34 structural tiles, 16px wall width, four corners and five junctions connect")
 	quit(0)
 
-func _validate_corner_connectors(image: Image, failures: Array[String]) -> void:
-	# Each row pair is a mechanical contract between a corner and a neighbouring straight wall.
-	# A mismatch would recreate the dark seam that used to appear at L turns.
-	if not _matches_vertical_strip(image, Vector2i(0, 5), TILE_SIZE - CONNECTOR_WIDTH, Vector2i(1, 1), 0):
-		failures.append("top-left corner does not lock to top horizontal wall")
-	if not _matches_horizontal_strip(image, Vector2i(0, 5), TILE_SIZE - CONNECTOR_WIDTH, Vector2i(1, 2), 0):
-		failures.append("top-left corner does not lock to left vertical wall")
-	if not _matches_vertical_strip(image, Vector2i(1, 5), 0, Vector2i(1, 1), TILE_SIZE - CONNECTOR_WIDTH):
-		failures.append("top-right corner does not lock to top horizontal wall")
-	if not _matches_horizontal_strip(image, Vector2i(1, 5), TILE_SIZE - CONNECTOR_WIDTH, Vector2i(9, 2), 0):
-		failures.append("top-right corner does not lock to right vertical wall")
-	if not _matches_vertical_strip(image, Vector2i(2, 5), 0, Vector2i(9, 1), TILE_SIZE - CONNECTOR_WIDTH):
-		failures.append("bottom-right corner does not lock to bottom horizontal wall")
-	if not _matches_horizontal_strip(image, Vector2i(2, 5), 0, Vector2i(9, 2), TILE_SIZE - CONNECTOR_WIDTH):
-		failures.append("bottom-right corner does not lock to right vertical wall")
-	if not _matches_vertical_strip(image, Vector2i(3, 5), TILE_SIZE - CONNECTOR_WIDTH, Vector2i(9, 1), 0):
-		failures.append("bottom-left corner does not lock to bottom horizontal wall")
-	if not _matches_horizontal_strip(image, Vector2i(3, 5), 0, Vector2i(1, 2), TILE_SIZE - CONNECTOR_WIDTH):
-		failures.append("bottom-left corner does not lock to left vertical wall")
+func _validate_roles(structure: TileSetAtlasSource, failures: Array[String]) -> void:
+	var expected: Dictionary = {
+		Vector2i(0, 1): ["wall_horizontal_top", 1],
+		Vector2i(4, 1): ["wall_horizontal_bottom", 4],
+		Vector2i(0, 2): ["wall_vertical_left", 8],
+		Vector2i(4, 2): ["wall_vertical_right", 2],
+		Vector2i(0, 3): ["wall_corner", 9],
+		Vector2i(1, 3): ["wall_corner", 3],
+		Vector2i(2, 3): ["wall_corner", 6],
+		Vector2i(3, 3): ["wall_corner", 12],
+		Vector2i(4, 4): ["wall_cross_junction", 15],
+		Vector2i(5, 4): ["door_frame", 1],
+	}
+	for coords in expected:
+		var data: TileData = structure.get_tile_data(coords, 0)
+		var expected_values: Array = expected[coords]
+		if data == null or data.get_custom_data("tile_role") != expected_values[0] or data.get_custom_data("connection_mask") != expected_values[1]:
+			failures.append("metadata mismatch at=" + str(coords))
 
-func _matches_vertical_strip(image: Image, first_tile: Vector2i, first_x: int, second_tile: Vector2i, second_x: int) -> bool:
-	for y in range(TILE_SIZE):
-		for offset in range(CONNECTOR_WIDTH):
-			var first_pixel: Color = image.get_pixel(first_tile.x * TILE_SIZE + first_x + offset, first_tile.y * TILE_SIZE + y)
-			var second_pixel: Color = image.get_pixel(second_tile.x * TILE_SIZE + second_x + offset, second_tile.y * TILE_SIZE + y)
-			if not first_pixel.is_equal_approx(second_pixel):
-				return false
-	return true
+func _validate_geometry(image: Image, failures: Array[String]) -> void:
+	# These masks are the contract used by the palette and later Terrain integration.
+	var masks: Dictionary = {
+		Vector2i(0, 1): 1, Vector2i(4, 1): 4,
+		Vector2i(0, 2): 8, Vector2i(4, 2): 2,
+		Vector2i(0, 3): 9, Vector2i(1, 3): 3, Vector2i(2, 3): 6, Vector2i(3, 3): 12,
+		Vector2i(0, 4): 11, Vector2i(1, 4): 14, Vector2i(2, 4): 7, Vector2i(3, 4): 13, Vector2i(4, 4): 15,
+		Vector2i(0, 5): 1, Vector2i(1, 5): 2, Vector2i(2, 5): 4, Vector2i(3, 5): 8,
+	}
+	for coords in masks:
+		var mask: int = masks[coords]
+		for y in range(TILE_SIZE):
+			for x in range(TILE_SIZE):
+				var expected_opaque: bool = _inside_mask(x, y, mask)
+				var actual_opaque: bool = image.get_pixel(coords.x * TILE_SIZE + x, coords.y * TILE_SIZE + y).a > 0.05
+				if expected_opaque != actual_opaque:
+					failures.append("geometry mask mismatch at=" + str(coords) + " pixel=" + str(Vector2i(x, y)))
+					return
 
-func _matches_horizontal_strip(image: Image, first_tile: Vector2i, first_y: int, second_tile: Vector2i, second_y: int) -> bool:
-	for x in range(TILE_SIZE):
-		for offset in range(CONNECTOR_WIDTH):
-			var first_pixel: Color = image.get_pixel(first_tile.x * TILE_SIZE + x, first_tile.y * TILE_SIZE + first_y + offset)
-			var second_pixel: Color = image.get_pixel(second_tile.x * TILE_SIZE + x, second_tile.y * TILE_SIZE + second_y + offset)
-			if not first_pixel.is_equal_approx(second_pixel):
-				return false
-	return true
+func _inside_mask(x: int, y: int, mask: int) -> bool:
+	if (mask & 1) != 0 and y < WALL_WIDTH:
+		return true
+	if (mask & 2) != 0 and x >= TILE_SIZE - WALL_WIDTH:
+		return true
+	if (mask & 4) != 0 and y >= TILE_SIZE - WALL_WIDTH:
+		return true
+	if (mask & 8) != 0 and x < WALL_WIDTH:
+		return true
+	return false
