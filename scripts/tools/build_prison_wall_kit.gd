@@ -26,12 +26,11 @@ func _initialize() -> void:
 		return
 	var atlas: Image = Image.create(ATLAS_COLUMNS * TILE_SIZE, ATLAS_ROWS * TILE_SIZE, false, Image.FORMAT_RGBA8)
 	atlas.fill(Color.TRANSPARENT)
-	# Use the approved 12x12 material atlas directly. The source cell already
-	# contains the intended metal face, trim and contact shadow; do not replace
-	# its depth with a synthetic brightness profile.
-	var horizontal_material: Image = _structure_tile(source, Vector2i(7, 0)).get_region(Rect2i(0, 0, TILE_SIZE, WALL_WIDTH))
-	_force_opaque(horizontal_material)
-	var horizontal_band: Image = horizontal_material
+	# Rebuild the horizontal cross-section from two approved source cells: the
+	# upper cell supplies the metal lip, while the next cell supplies the wall
+	# face. This keeps the original art direction but prevents the wall body
+	# from disappearing into the floor at runtime.
+	var horizontal_band: Image = _build_horizontal_wall_band(source)
 	var horizontal_bottom_band: Image = horizontal_band.duplicate()
 	horizontal_bottom_band.flip_y()
 	var vertical_band: Image = horizontal_band.duplicate()
@@ -102,15 +101,41 @@ func _make_mask_tile(mask: int, top_band: Image, bottom_band: Image, left_band: 
 		tile.blit_rect(right_band, Rect2i(Vector2i.ZERO, right_band.get_size()), Vector2i(TILE_SIZE - WALL_WIDTH, 0))
 	return tile
 
-func _force_opaque(image: Image) -> void:
-	# The approved source contains transparent dark pixels in parts of the
-	# wall face. A connection tile cannot leave those pixels as holes, so keep
-	# their RGB values but make the canonical wall band fully solid.
-	for y in range(image.get_height()):
-		for x in range(image.get_width()):
-			var pixel: Color = image.get_pixel(x, y)
+func _build_horizontal_wall_band(source: Image) -> Image:
+	var top_material: Image = _structure_tile(source, Vector2i(7, 0))
+	var face_material: Image = _structure_tile(source, Vector2i(7, 1))
+	var band: Image = Image.create(TILE_SIZE, WALL_WIDTH, false, Image.FORMAT_RGBA8)
+	for y in range(WALL_WIDTH):
+		var source_image: Image = face_material
+		var source_y: int = 0
+		var factor: float = 1.0
+		var lift: float = 0.0
+		if y < 8:
+			source_image = top_material
+			source_y = mini(y * 2, TILE_SIZE - 1)
+			factor = 1.10
+			lift = 0.02
+		elif y < 26:
+			source_y = clampi(4 + (y - 8) * 2, 0, TILE_SIZE - 1)
+			factor = 1.22
+			lift = 0.025
+		else:
+			source_y = clampi(36 + (y - 26) * 2, 0, TILE_SIZE - 1)
+			factor = 0.52
+		for x in range(TILE_SIZE):
+			var pixel: Color = source_image.get_pixel(x, source_y)
+			pixel = _shade_lift(pixel, factor, lift)
 			pixel.a = 1.0
-			image.set_pixel(x, y, pixel)
+			band.set_pixel(x, y, pixel)
+	return band
+
+func _shade_lift(pixel: Color, factor: float, lift: float) -> Color:
+	return Color(
+		clampf(pixel.r * factor + lift, 0.0, 1.0),
+		clampf(pixel.g * factor + lift, 0.0, 1.0),
+		clampf(pixel.b * factor + lift, 0.0, 1.0),
+		pixel.a,
+	)
 
 func _write_tile(atlas: Image, coords: Vector2i, tile: Image) -> void:
 	atlas.blit_rect(tile, Rect2i(Vector2i.ZERO, tile.get_size()), coords * TILE_SIZE)
