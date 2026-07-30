@@ -1,10 +1,10 @@
 extends SceneTree
 
-## Validates the canonical 48px wall kit, its 16px edge geometry, and the authored map.
+## Validates the canonical 48px wall kit, its 32px edge geometry, and the authored map.
 const TILE_SET_PATH: String = "res://resources/maps/prison_tileset_v1.tres"
 const TILEMAP_SCENE_PATH: String = "res://scenes/maps/cell_block_a2_tilemap.tscn"
 const TILE_SIZE: int = 48
-const WALL_WIDTH: int = 16
+const WALL_WIDTH: int = 32
 const REQUIRED_STRUCTURE_TILES: Array[Vector2i] = [
 	Vector2i(0, 0), Vector2i(3, 0),
 	Vector2i(0, 1), Vector2i(4, 1), Vector2i(0, 2), Vector2i(4, 2),
@@ -60,7 +60,7 @@ func _initialize() -> void:
 		push_error("Wall kit audit failed: " + "; ".join(failures))
 		quit(1)
 		return
-	print("WALL KIT AUDIT PASS: 34 structural tiles, 16px wall width, four corners and five junctions connect")
+	print("WALL KIT AUDIT PASS: 34 structural tiles, 32px wall width, four corners and five junctions connect")
 	quit(0)
 
 func _validate_roles(structure: TileSetAtlasSource, failures: Array[String]) -> void:

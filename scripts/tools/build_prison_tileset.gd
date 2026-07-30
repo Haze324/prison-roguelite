@@ -1,7 +1,7 @@
 extends SceneTree
 
 ## Registers the canonical wall kit and transparent decoration set.
-## Source 0 is the 48px/16px wall geometry; source 1 never owns wall pixels.
+## Source 0 is the 48px/32px wall geometry; source 1 never owns wall pixels.
 const STRUCTURE_ATLAS_PATH: String = "res://assets/generated/tilesets/industrial_prison/prison_wall_kit_48_v1.png"
 const PROPS_ATLAS_PATH: String = "res://assets/generated/tilesets/industrial_prison/prison_modular_props_48_v1.png"
 const OUTPUT_PATH: String = "res://resources/maps/prison_tileset_v1.tres"
@@ -70,7 +70,7 @@ func _initialize() -> void:
 		push_error("Could not save modular prison TileSet: " + str(error))
 		quit(1)
 		return
-	print("PRISON TILESET BUILT: wall_kit=34 props=81 wall_width=16")
+	print("PRISON TILESET BUILT: wall_kit=34 props=81 wall_width=32")
 	quit(0)
 
 func _configure_structure_tile(atlas: TileSetAtlasSource, coords: Vector2i) -> void:

@@ -1,15 +1,15 @@
 extends SceneTree
 
 ## Builds the canonical wall kit from one approved material source.
-## Every wall band is exactly 16 px inside a 48 px cell; masks describe the occupied edges.
-const SOURCE_PATH: String = "res://assets/generated/tilesets/industrial_prison/prison_modular_structure_raw_v1.png"
+## Every wall band is exactly 32 px inside a 48 px cell; masks describe the occupied edges.
+const SOURCE_PATH: String = "res://assets/generated/tilesets/industrial_prison/prison_tileset_atlas_material_48_v4.png"
 const OUTPUT_PATH: String = "res://assets/generated/tilesets/industrial_prison/prison_wall_kit_48_v1.png"
 const PREVIEW_PATH: String = "res://assets/generated/tilesets/industrial_prison/prison_wall_kit_preview_v1.png"
 const TILE_SIZE: int = 48
-const WALL_WIDTH: int = 16
-const SOURCE_GRID_COLUMNS: int = 8
-const SOURCE_GRID_ROWS: int = 8
-const SOURCE_BORDER: int = 6
+const WALL_WIDTH: int = 32
+const SOURCE_GRID_COLUMNS: int = 12
+const SOURCE_GRID_ROWS: int = 12
+const SOURCE_BORDER: int = 0
 const ATLAS_COLUMNS: int = 8
 const ATLAS_ROWS: int = 6
 
@@ -26,12 +26,12 @@ func _initialize() -> void:
 		return
 	var atlas: Image = Image.create(ATLAS_COLUMNS * TILE_SIZE, ATLAS_ROWS * TILE_SIZE, false, Image.FORMAT_RGBA8)
 	atlas.fill(Color.TRANSPARENT)
-	# Use the complete approved wall cell as the material source, then compress
-	# it into the fixed 16px cross-section. Cropping only the top strip would
-	# keep the trim but lose the wall face and its sense of thickness.
-	var horizontal_material: Image = _structure_tile(source, Vector2i(1, 1))
-	horizontal_material.resize(TILE_SIZE, WALL_WIDTH, Image.INTERPOLATE_NEAREST)
-	var horizontal_band: Image = _build_wall_band(horizontal_material)
+	# Use the approved 12x12 material atlas directly. The source cell already
+	# contains the intended metal face, trim and contact shadow; do not replace
+	# its depth with a synthetic brightness profile.
+	var horizontal_material: Image = _structure_tile(source, Vector2i(7, 0)).get_region(Rect2i(0, 0, TILE_SIZE, WALL_WIDTH))
+	_force_opaque(horizontal_material)
+	var horizontal_band: Image = horizontal_material
 	var horizontal_bottom_band: Image = horizontal_band.duplicate()
 	horizontal_bottom_band.flip_y()
 	var vertical_band: Image = horizontal_band.duplicate()
@@ -76,7 +76,7 @@ func _initialize() -> void:
 		quit(1)
 		return
 	_render_preview(atlas)
-	print("PRISON WALL KIT BUILT: 48x48 cells, wall_width=16, corners=4, junctions=5, caps=4")
+	print("PRISON WALL KIT BUILT: 48x48 cells, wall_width=32, corners=4, junctions=5, caps=4")
 	quit(0)
 
 func _structure_tile(source: Image, coords: Vector2i) -> Image:
@@ -102,52 +102,15 @@ func _make_mask_tile(mask: int, top_band: Image, bottom_band: Image, left_band: 
 		tile.blit_rect(right_band, Rect2i(Vector2i.ZERO, right_band.get_size()), Vector2i(TILE_SIZE - WALL_WIDTH, 0))
 	return tile
 
-func _build_wall_band(source: Image) -> Image:
-	# Fixed 16px cross-section: 2px outer shadow, 1px bright bevel,
-	# 8px metal face, 1px inner bevel and 4px contact shadow. Every
-	# orientation derives from this same band, so corners and T-junctions
-	# keep one consistent thickness and depth direction.
-	var band: Image = Image.create(TILE_SIZE, WALL_WIDTH, false, Image.FORMAT_RGBA8)
-	for y in range(WALL_WIDTH):
-		var depth_factor: float = 0.82
-		var lift: float = 0.0
-		if y == 0:
-			depth_factor = 0.12
-		elif y == 1:
-			depth_factor = 0.28
-		elif y == 2:
-			depth_factor = 1.45
-			lift = 0.035
-		elif y >= 3 and y <= 10:
-			depth_factor = 1.34 + float(y - 3) * 0.018
-			lift = 0.012
-		elif y == 11:
-			depth_factor = 0.88
-		elif y == 12:
-			depth_factor = 0.52
-		elif y == 13:
-			depth_factor = 0.34
-		elif y == 14:
-			depth_factor = 0.22
-		else:
-			depth_factor = 0.12
-		for x in range(TILE_SIZE):
-			var pixel: Color = source.get_pixel(x, y)
-			band.set_pixel(x, y, _shade_lift(pixel, depth_factor, lift))
-	# A broken pixel highlight keeps the bevel readable without becoming a solid line.
-	for x in range(TILE_SIZE):
-		if x % 7 != 0 and x % 11 != 0:
-			var highlight: Color = band.get_pixel(x, 2)
-			band.set_pixel(x, 2, _shade_lift(highlight, 1.08, 0.012))
-	return band
-
-func _shade_lift(pixel: Color, factor: float, lift: float) -> Color:
-	return Color(
-		clampf(pixel.r * factor + lift, 0.0, 1.0),
-		clampf(pixel.g * factor + lift, 0.0, 1.0),
-		clampf(pixel.b * factor + lift, 0.0, 1.0),
-		pixel.a,
-	)
+func _force_opaque(image: Image) -> void:
+	# The approved source contains transparent dark pixels in parts of the
+	# wall face. A connection tile cannot leave those pixels as holes, so keep
+	# their RGB values but make the canonical wall band fully solid.
+	for y in range(image.get_height()):
+		for x in range(image.get_width()):
+			var pixel: Color = image.get_pixel(x, y)
+			pixel.a = 1.0
+			image.set_pixel(x, y, pixel)
 
 func _write_tile(atlas: Image, coords: Vector2i, tile: Image) -> void:
 	atlas.blit_rect(tile, Rect2i(Vector2i.ZERO, tile.get_size()), coords * TILE_SIZE)
