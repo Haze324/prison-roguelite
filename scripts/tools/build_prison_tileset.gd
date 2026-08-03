@@ -10,6 +10,7 @@ const STRUCTURE_COLUMNS: int = 8
 const STRUCTURE_ROWS: int = 6
 const PROP_COLUMNS: int = 9
 const PROP_ROWS: int = 9
+const WALL_WIDTH: int = 32
 const STRUCTURE_TILES: Array[Vector2i] = [
 	Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0),
 	Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1), Vector2i(3, 1),
@@ -81,20 +82,51 @@ func _configure_structure_tile(atlas: TileSetAtlasSource, coords: Vector2i) -> v
 	data.set_custom_data("connection_mask", _connection_mask(coords))
 	if not _is_solid_structure(coords):
 		return
-	var half: float = float(TILE_SIZE.x) * 0.5
-	var polygon: PackedVector2Array = PackedVector2Array([
-		Vector2(-half, -half), Vector2(half, -half),
-		Vector2(half, half), Vector2(-half, half),
-	])
-	data.set_collision_polygons_count(0, 1)
-	data.set_collision_polygon_points(0, 0, polygon)
-	var occluder: OccluderPolygon2D = OccluderPolygon2D.new()
-	occluder.polygon = polygon
-	data.set_occluder_polygons_count(0, 1)
-	data.set_occluder_polygon(0, 0, occluder)
+	var sides: Array[int] = _active_sides(_connection_mask(coords))
+	data.set_collision_polygons_count(0, sides.size())
+	data.set_occluder_polygons_count(0, sides.size())
+	for index in range(sides.size()):
+		var polygon: PackedVector2Array = _side_polygon(sides[index])
+		data.set_collision_polygon_points(0, index, polygon)
+		var occluder: OccluderPolygon2D = OccluderPolygon2D.new()
+		occluder.polygon = polygon
+		data.set_occluder_polygon(0, index, occluder)
 
 func _is_solid_structure(coords: Vector2i) -> bool:
-	return coords.y >= 1
+	return coords.y >= 1 and coords != Vector2i(5, 4)
+
+func _active_sides(mask: int) -> Array[int]:
+	var sides: Array[int] = []
+	for side in [1, 2, 4, 8]:
+		if mask & side:
+			sides.append(side)
+	return sides
+
+func _side_polygon(side: int) -> PackedVector2Array:
+	var half: float = float(TILE_SIZE.x) * 0.5
+	var inner: float = half - float(WALL_WIDTH)
+	match side:
+		1: # N: upper wall face
+			return PackedVector2Array([
+				Vector2(-half, -half), Vector2(half, -half),
+				Vector2(half, inner), Vector2(-half, inner),
+			])
+		2: # E: right wall face
+			return PackedVector2Array([
+				Vector2(inner, -half), Vector2(half, -half),
+				Vector2(half, half), Vector2(inner, half),
+			])
+		4: # S: lower wall face
+			return PackedVector2Array([
+				Vector2(-half, inner), Vector2(half, inner),
+				Vector2(half, half), Vector2(-half, half),
+			])
+		8: # W: left wall face
+			return PackedVector2Array([
+				Vector2(-half, -half), Vector2(inner, -half),
+				Vector2(inner, half), Vector2(-half, half),
+			])
+	return PackedVector2Array()
 
 func _tile_role(coords: Vector2i) -> String:
 	if coords == Vector2i(5, 4):

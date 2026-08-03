@@ -16,7 +16,10 @@ const CORNER_TOP_LEFT_TILE: Vector2i = Vector2i(0, 3)
 const CORNER_TOP_RIGHT_TILE: Vector2i = Vector2i(1, 3)
 const CORNER_BOTTOM_RIGHT_TILE: Vector2i = Vector2i(2, 3)
 const CORNER_BOTTOM_LEFT_TILE: Vector2i = Vector2i(3, 3)
-const DOOR_TILE: Vector2i = Vector2i(5, 4)
+const DOOR_TILE_N: Vector2i = HORIZONTAL_TOP_TILE
+const DOOR_TILE_E: Vector2i = VERTICAL_RIGHT_TILE
+const DOOR_TILE_S: Vector2i = HORIZONTAL_BOTTOM_TILE
+const DOOR_TILE_W: Vector2i = VERTICAL_LEFT_TILE
 
 func _initialize() -> void:
 	var tile_set: TileSet = load(TILE_SET_PATH) as TileSet
@@ -95,8 +98,9 @@ func _paint_floor(layer: TileMapLayer) -> void:
 				layer.set_cell(Vector2i(x, y), 0, CORRIDOR_TILE)
 
 func _paint_walls(layer: TileMapLayer) -> void:
-	# 外框是完整封闭边界，仅在明确的主通道位置留下门洞。
-	_draw_room(layer, Rect2i(0, 0, GRID_SIZE.x - 1, GRID_SIZE.y - 1), [
+	# 外框必须覆盖整个网格：Rect2i 的 size 是尺寸，不是右下角坐标。
+	# 这里使用 GRID_SIZE，确保 x=34 和 y=22 也被绘制，避免地图最外圈缺一列/一行。
+	_draw_room(layer, Rect2i(Vector2i.ZERO, GRID_SIZE), [
 		Vector2i(17, 0), Vector2i(17, 22), Vector2i(0, 11), Vector2i(34, 11),
 	])
 	# 六个房间均为独立手工边界，门洞位置是设计的一部分。
@@ -148,7 +152,16 @@ func _paint_door_frames(layer: TileMapLayer) -> void:
 		Vector2i(17, 0), Vector2i(17, 22), Vector2i(0, 11), Vector2i(34, 11),
 	]
 	for cell in door_cells:
-		layer.set_cell(cell, 0, DOOR_TILE)
+		layer.set_cell(cell, 0, _door_tile_for_cell(cell))
+
+func _door_tile_for_cell(cell: Vector2i) -> Vector2i:
+	if cell.y == 0 or cell.y == 2 or cell.y == 10 or cell.y == 17:
+		return DOOR_TILE_N
+	if cell.y == 22 or cell.y == 8 or cell.y == 16 or cell.y == 21:
+		return DOOR_TILE_S
+	if cell.x == 0 or cell.x == 2 or cell.x == 13 or cell.x == 24:
+		return DOOR_TILE_W
+	return DOOR_TILE_E
 
 func _paint_decorations(layer: TileMapLayer) -> void:
 	# Source 1 contains alpha-only props. They deliberately do not carry wall pixels.
