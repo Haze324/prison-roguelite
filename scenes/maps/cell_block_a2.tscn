@@ -33,6 +33,7 @@ script = ExtResource("8_legacy")
 metadata/legacy_geometry_disabled = true
 
 [node name="GeometryClean" type="Node2D" parent="." unique_id=2040464269]
+visible = false
 metadata/legacy_geometry_disabled = true
 
 [node name="NorthBoundary" type="StaticBody2D" parent="GeometryClean" unique_id=801298681]
@@ -354,6 +355,8 @@ script = ExtResource("7_door")
 gate_type = "pass_gate"
 
 [node name="Architecture" type="Node2D" parent="." unique_id=2027555739]
+visible = false
+metadata/legacy_architecture_disabled = true
 
 [node name="Shelf_01" type="StaticBody2D" parent="Architecture" unique_id=623639854]
 position = Vector2(164, 238)
