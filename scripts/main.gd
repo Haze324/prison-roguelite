@@ -85,7 +85,11 @@ func _ready() -> void:
 	_exit_gate.position = exit_position if exit_position != Vector2.ZERO else Vector2(1500.0, 760.0)
 	_exit_gate.setup(player)
 	_last_event = "准备行动：移动、射击或打开背包"
-	demo_hud.show_main_menu()
+	# 主菜单已经拥有独立的动态封面和交互组件；运行 HUD 只在进入任务后显示。
+	if main_menu_ui != null and main_menu_ui.visible:
+		demo_hud.hide()
+	else:
+		demo_hud.show_main_menu()
 
 func _process(delta: float) -> void:
 	if not _run_over:
