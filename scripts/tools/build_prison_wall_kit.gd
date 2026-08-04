@@ -12,8 +12,6 @@ const WALL_CONTACT_SHADOW_DEPTH: int = 6
 const WALL_TOP_FACTOR: float = 1.32
 const WALL_FACE_FACTOR: float = 0.92
 const WALL_SHADOW_FACTOR: float = 0.44
-const SHADOW_FACTOR: float = 0.78
-const SHADOW_LIFT: float = -0.004
 const SOURCE_GRID_COLUMNS: int = 12
 const SOURCE_GRID_ROWS: int = 12
 const SOURCE_BORDER: int = 0
@@ -40,15 +38,13 @@ func _initialize() -> void:
 	var horizontal_band: Image = _build_horizontal_wall_band(source)
 	var horizontal_bottom_band: Image = horizontal_band.duplicate()
 	horizontal_bottom_band.flip_y()
-	# Keep one global light direction for the whole room: north/west walls
-	# receive the approved material brightness, while south/east walls fall
-	# into a controlled shadow instead of looking independently rotated-lit.
-	horizontal_bottom_band = _shade_band(horizontal_bottom_band, SHADOW_FACTOR, SHADOW_LIFT)
 	var vertical_band: Image = horizontal_band.duplicate()
 	vertical_band.rotate_90(ClockDirection.CLOCKWISE)
 	var vertical_right_band: Image = vertical_band.duplicate()
 	vertical_right_band.flip_x()
-	vertical_right_band = _shade_band(vertical_right_band, SHADOW_FACTOR, SHADOW_LIFT)
+	# Do not darken an entire compass direction in the texture. Cast shadows
+	# belong to the active Light2D and the wall occluder, so their direction
+	# follows the actual light instead of being baked into the room art.
 	var floor_variants: Array[Image] = []
 	for x in range(4):
 		var floor: Image = _structure_tile(source, Vector2i(x, 0))
@@ -149,13 +145,6 @@ func _shade_lift(pixel: Color, factor: float, lift: float) -> Color:
 		clampf(pixel.b * factor + lift, 0.0, 1.0),
 		pixel.a,
 	)
-
-func _shade_band(source: Image, factor: float, lift: float) -> Image:
-	var shaded: Image = Image.create(source.get_width(), source.get_height(), false, Image.FORMAT_RGBA8)
-	for y in range(source.get_height()):
-		for x in range(source.get_width()):
-			shaded.set_pixel(x, y, _shade_lift(source.get_pixel(x, y), factor, lift))
-	return shaded
 
 func _write_tile(atlas: Image, coords: Vector2i, tile: Image) -> void:
 	atlas.blit_rect(tile, Rect2i(Vector2i.ZERO, tile.get_size()), coords * TILE_SIZE)
