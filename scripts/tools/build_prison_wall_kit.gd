@@ -7,6 +7,11 @@ const OUTPUT_PATH: String = "res://assets/generated/tilesets/industrial_prison/p
 const PREVIEW_PATH: String = "res://assets/generated/tilesets/industrial_prison/prison_wall_kit_preview_v1.png"
 const TILE_SIZE: int = 48
 const WALL_WIDTH: int = 32
+const WALL_TOP_PLANE_DEPTH: int = 8
+const WALL_CONTACT_SHADOW_DEPTH: int = 6
+const WALL_TOP_FACTOR: float = 1.32
+const WALL_FACE_FACTOR: float = 0.92
+const WALL_SHADOW_FACTOR: float = 0.44
 const SHADOW_FACTOR: float = 0.78
 const SHADOW_LIFT: float = -0.004
 const SOURCE_GRID_COLUMNS: int = 12
@@ -117,18 +122,19 @@ func _build_horizontal_wall_band(source: Image) -> Image:
 		var source_y: int = 0
 		var factor: float = 1.0
 		var lift: float = 0.0
-		if y < 8:
+		if y < WALL_TOP_PLANE_DEPTH:
 			source_image = top_material
 			source_y = mini(y * 2, TILE_SIZE - 1)
-			factor = 1.10
-			lift = 0.02
-		elif y < 26:
-			source_y = clampi(4 + (y - 8) * 2, 0, TILE_SIZE - 1)
-			factor = 1.22
-			lift = 0.025
+			factor = WALL_TOP_FACTOR - float(y) * 0.025
+			lift = 0.035 - float(y) * 0.002
+		elif y < WALL_WIDTH - WALL_CONTACT_SHADOW_DEPTH:
+			source_y = clampi(8 + (y - WALL_TOP_PLANE_DEPTH) * 2, 0, TILE_SIZE - 1)
+			factor = WALL_FACE_FACTOR
+			lift = 0.0
 		else:
-			source_y = clampi(36 + (y - 26) * 2, 0, TILE_SIZE - 1)
-			factor = 0.52
+			source_y = clampi(38 + (y - (WALL_WIDTH - WALL_CONTACT_SHADOW_DEPTH)) * 2, 0, TILE_SIZE - 1)
+			factor = WALL_SHADOW_FACTOR
+			lift = -0.006
 		for x in range(TILE_SIZE):
 			var pixel: Color = source_image.get_pixel(x, source_y)
 			pixel = _shade_lift(pixel, factor, lift)
