@@ -1,36 +1,75 @@
+@tool
 class_name Merchant
 extends Node2D
 
+signal interaction_requested(merchant: Node2D)
+
+const PORTRAIT_TEXTURE: Texture2D = preload("res://assets/俯视角/The Female Adventurer - Free/The Female Adventurer - Free/Idle/Idle.png")
+
+@export var portrait_frame: int = 1
+@export var portrait_scale: float = 1.25
+@export var invulnerable: bool = true ## 商人是功能型 NPC，不参与伤害与战斗。
+@export var interaction_radius: float = 58.0
+
 var player: Player
+var _portrait: Sprite2D
+var _player_nearby: bool = false
+
+func _ready() -> void:
+	add_to_group("friendly_npcs")
+	_ensure_portrait()
+	queue_redraw()
 
 func setup(target: Player) -> void:
 	player = target
 	queue_redraw()
 
 func _process(_delta: float) -> void:
-	queue_redraw()
-	if player == null or global_position.distance_to(player.global_position) > 48.0:
-		return
-	if Input.is_action_just_pressed("interact"):
-		var can_supply_medkit: bool = player.medkits < player.get_medkit_maximum()
-		var can_supply_ammo: bool = player.needs_ammo_refill()
-		if not can_supply_medkit and not can_supply_ammo:
-			EventBus.consumable_used.emit("商人：当前补给已满")
-			return
-		if MetaProgression.coins < 15:
-			EventBus.consumable_used.emit("商人：需要 15 枚硬币")
-			return
-		MetaProgression.add_coins(-15)
-		if can_supply_medkit:
-			player.medkits += 1
-		if can_supply_ammo:
-			player.refill_ammo()
-		EventBus.consumable_used.emit("商人：医疗包和弹药已补充（-15 枚硬币）")
+	if not Engine.is_editor_hint() and player != null:
+		var nearby: bool = is_instance_valid(player) and global_position.distance_to(player.global_position) <= interaction_radius
+		if nearby != _player_nearby:
+			_player_nearby = nearby
+			queue_redraw()
+		if nearby and Input.is_action_just_pressed("interact"):
+			interaction_requested.emit(self)
+
+func buy_item(item_key: String) -> bool:
+	if player == null:
+		return false
+	var price: int = 15
+	if item_key == "ammo_box":
+		price = 10
+	elif item_key == "adrenaline":
+		price = 18
+	if MetaProgression.coins < price:
+		EventBus.consumable_used.emit("商人：硬币不足")
+		return false
+	if item_key == "medkit":
+		if player.medkits >= player.get_medkit_maximum():
+			EventBus.consumable_used.emit("商人：医疗包已满")
+			return false
+		player.medkits += 1
+	elif item_key == "ammo_box" or item_key == "adrenaline":
+		player.consumable_counts[item_key] = int(player.consumable_counts.get(item_key, 0)) + 1
+	else:
+		return false
+	MetaProgression.add_coins(-price)
+	EventBus.consumable_used.emit("商人：已购买 " + item_key)
+	return true
+
+func _ensure_portrait() -> void:
+	if _portrait == null:
+		_portrait = Sprite2D.new()
+		_portrait.name = "MerchantPortrait"
+		add_child(_portrait)
+	_portrait.texture = PORTRAIT_TEXTURE
+	_portrait.hframes = 8
+	_portrait.vframes = 6
+	_portrait.frame = clampi(portrait_frame, 0, 47)
+	_portrait.scale = Vector2.ONE * portrait_scale
 
 func _draw() -> void:
-	draw_rect(Rect2(-28.0, -26.0, 56.0, 52.0), Color(0.08, 0.12, 0.16, 1.0), true)
-	draw_rect(Rect2(-28.0, -26.0, 56.0, 52.0), Color(0.42, 0.75, 0.95, 1.0), false, 2.0)
-	draw_circle(Vector2(0.0, -4.0), 10.0, Color(0.42, 0.75, 0.95, 1.0))
-	if player != null and global_position.distance_to(player.global_position) <= 100.0:
-		draw_string(ThemeDB.fallback_font, Vector2(-34.0, -38.0), "商人", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, Color(0.65, 0.86, 1.0, 1.0))
-		draw_string(ThemeDB.fallback_font, Vector2(-45.0, 44.0), "E：补给（15 硬币）", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, Color(0.9, 0.82, 0.55, 1.0))
+	# No HP/progress bar: the portrait is the merchant's identity and the prompt is contextual.
+	if _player_nearby or Engine.is_editor_hint():
+		draw_string(ThemeDB.fallback_font, Vector2(-34.0, -58.0), "商人", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 11, Color("72E0C2"))
+		draw_string(ThemeDB.fallback_font, Vector2(-48.0, 56.0), "E：交谈", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, Color("E8F0E9"))

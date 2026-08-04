@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/components/quickbar.gd" id="1_quickbar"]
+
+[node name="QuickbarUI" type="Control"]
+custom_minimum_size = Vector2(478, 62)
+mouse_filter = 0
+z_index = 20
+script = ExtResource("1_quickbar")

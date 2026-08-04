@@ -1,14 +1,12 @@
 class_name PaperUITheme
 extends RefCounted
 
-## Paper UI 素材：统一由这里暴露，界面脚本不直接依赖素材目录结构。
-const BOOK_DESK: Texture2D = preload("res://assets/ui/paper/book_desk.png")
-const BANNER_PLAIN: Texture2D = preload("res://assets/ui/paper/banner_plain.png")
-const BANNER_CUTOUT: Texture2D = preload("res://assets/ui/paper/banner_cutout.png")
-const BUTTON_NORMAL: Texture2D = preload("res://assets/ui/paper/button_normal.png")
-const BUTTON_HOVER: Texture2D = preload("res://assets/ui/paper/button_hover.png")
-const SLOT_HOLDER: Texture2D = preload("res://assets/ui/paper/slot_holder.png")
-const ITEM_ICON: Texture2D = preload("res://assets/ui/paper/item_icon.png")
-const UI_ICON: Texture2D = preload("res://assets/ui/paper/ui_icon.png")
-const PROGRESS_BAR: Texture2D = preload("res://assets/ui/paper/progress_bar.png")
-const EQUIPMENT_ICON: Texture2D = preload("res://assets/ui/paper/equipment_icon.png")
+## 兼容旧脚本的主题名保留，但不再加载或引用 Paper UI 图片资源。
+## 新 UI 使用这些颜色和 Godot 原生 StyleBox/CanvasItem 绘制。
+
+const INK: Color = Color("E7F1ED")
+const MUTED: Color = Color("91A7A1")
+const MINT: Color = Color("61E4C0")
+const AMBER: Color = Color("E7B455")
+const RED: Color = Color("E56568")
+const PANEL: Color = Color("0B151A")

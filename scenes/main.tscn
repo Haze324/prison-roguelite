@@ -6,67 +6,49 @@
 [ext_resource type="Resource" path="res://resources/monsters/demon_grunt.tres" id="4_demon"]
 [ext_resource type="Resource" path="res://resources/monsters/bloodmonster_grunt.tres" id="5_blood"]
 [ext_resource type="Script" path="res://scripts/systems/noise_manager.gd" id="6_noise"]
-[ext_resource type="Script" path="res://scripts/systems/safehouse_marker.gd" id="7_safehouse"]
 [ext_resource type="Script" path="res://scripts/systems/demo_hud.gd" id="8_hud"]
 [ext_resource type="Resource" path="res://resources/animations/bloodmonster_sprite_frames.tres" id="9_blood_frames"]
-[ext_resource type="Script" path="res://scripts/systems/map_generator.gd" id="10_map_generator"]
 [ext_resource type="Script" path="res://scripts/systems/merchant.gd" id="11_merchant"]
 [ext_resource type="Script" path="res://scripts/systems/skill_terminal.gd" id="12_skill_terminal"]
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
-size = Vector2(2400, 40)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_v"]
-size = Vector2(40, 1600)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
-bg_color = Color(0.03, 0.025, 0.04, 0.9)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.35, 0.22, 0.28, 1)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+[ext_resource type="Script" path="res://scripts/ui/components/health_gauge.gd" id="13_health_gauge"]
+[ext_resource type="Script" path="res://scripts/ui/components/noise_meter.gd" id="14_noise_meter"]
+[ext_resource type="Script" path="res://scripts/systems/map_manager.gd" id="15_map_manager"]
+[ext_resource type="PackedScene" path="res://scenes/maps/cell_block_a2.tscn" id="16_map_a2"]
+[ext_resource type="PackedScene" path="res://scenes/maps/maintenance_core.tscn" id="17_map_core"]
+[ext_resource type="PackedScene" path="res://scenes/maps/warden_wing.tscn" id="18_map_warden"]
+[ext_resource type="Script" path="res://scripts/ui/interaction_overlay.gd" id="19_interaction_overlay"]
+[ext_resource type="PackedScene" path="res://scenes/ui/main_menu.tscn" id="20_main_menu"]
+[ext_resource type="PackedScene" path="res://scenes/ui/quickbar.tscn" id="21_quickbar"]
+[ext_resource type="PackedScene" path="res://scenes/ui/inventory_panel.tscn" id="22_inventory"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
 
 [node name="Background" type="ColorRect" parent="."]
-offset_left = -600.0
-offset_top = -400.0
-offset_right = 1800.0
-offset_bottom = 1200.0
+offset_left = -4000.0
+offset_top = -3000.0
+offset_right = 4000.0
+offset_bottom = 4000.0
 mouse_filter = 2
-color = Color(0.08, 0.065, 0.1, 1)
+z_index = -100
+color = Color(0.018, 0.024, 0.028, 1)
 
 [node name="Arena" type="ColorRect" parent="."]
-offset_left = -480.0
-offset_top = -280.0
-offset_right = 1680.0
-offset_bottom = 1080.0
+offset_left = -3000.0
+offset_top = -2200.0
+offset_right = 3000.0
+offset_bottom = 3000.0
 mouse_filter = 2
-color = Color(0.075, 0.055, 0.07, 1)
+z_index = -30
+color = Color(0.028, 0.038, 0.042, 1)
 
 [node name="环境暗度" type="CanvasModulate" parent="."]
-color = Color(0.34, 0.38, 0.42, 1)
+color = Color(1.0, 1.0, 1.0, 1.0)
 
-[node name="MapGenerator" type="Node2D" parent="."]
-script = ExtResource("10_map_generator")
-
-[node name="Safehouse" type="Node2D" parent="."]
-position = Vector2(350, 300)
-script = ExtResource("7_safehouse")
-
-[node name="Merchant" type="Node2D" parent="."]
-position = Vector2(430, 300)
-script = ExtResource("11_merchant")
-
-[node name="SkillTerminal" type="Node2D" parent="."]
-position = Vector2(270, 300)
-script = ExtResource("12_skill_terminal")
+[node name="MapManager" type="Node" parent="."]
+script = ExtResource("15_map_manager")
+map_scenes = Array[PackedScene]([ExtResource("16_map_a2"), ExtResource("17_map_core"), ExtResource("18_map_warden")])
+fixed_map_index = 0
 
 [node name="Player" parent="." instance=ExtResource("2_player")]
 position = Vector2(400, 350)
@@ -103,28 +85,55 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("8_hud")
 
-[node name="Panel" type="PanelContainer" parent="HUD"]
-visible = false
-offset_left = 18.0
-offset_top = 18.0
-offset_right = 330.0
-offset_bottom = 240.0
-theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+[node name="HealthGauge" type="Control" parent="HUD/DemoHUD"]
+layout_mode = 0
+offset_left = 82.0
+offset_top = 55.0
+offset_right = 276.0
+offset_bottom = 69.0
+mouse_filter = 2
+script = ExtResource("13_health_gauge")
 
-[node name="Status" type="Label" parent="HUD"]
-visible = false
-offset_left = 32.0
-offset_top = 32.0
-offset_right = 316.0
-offset_bottom = 210.0
-theme_override_colors/font_color = Color(0.9, 0.82, 0.78, 1)
-text = "初始化中"
+[node name="NoiseMeter" type="Control" parent="HUD/DemoHUD"]
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -262.0
+offset_top = 58.0
+offset_right = -34.0
+offset_bottom = 93.0
+mouse_filter = 2
+script = ExtResource("14_noise_meter")
 
-[node name="Event" type="Label" parent="HUD"]
-visible = false
-offset_left = 18.0
-offset_top = 680.0
-offset_right = 900.0
-offset_bottom = 710.0
-theme_override_colors/font_color = Color(0.8, 0.65, 0.45, 1)
-text = "最近事件：等待输入"
+[node name="QuickbarUI" parent="HUD" instance=ExtResource("21_quickbar")]
+layout_mode = 1
+anchors_preset = 12
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -239.0
+offset_top = -156.0
+offset_right = 239.0
+offset_bottom = -94.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="InventoryPanelUI" parent="HUD" instance=ExtResource("22_inventory")]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="InteractionOverlay" type="Control" parent="HUD"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("19_interaction_overlay")
+
+[node name="MainMenuUI" parent="HUD" instance=ExtResource("20_main_menu")]

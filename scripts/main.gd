@@ -15,14 +15,14 @@ const SHOTGUN_DATA: WeaponData = preload("res://resources/weapons/shotgun_common
 @onready var player: Player = $Player
 @onready var demon: Monster = $DemonGrunt
 @onready var blood_monster: Monster = $BloodMonsterGrunt
-@onready var status_label: Label = $HUD/Status
-@onready var event_label: Label = $HUD/Event
 @onready var noise_manager: NoiseManager = $NoiseManager
 @onready var demo_hud: DemoHUD = $HUD/DemoHUD
-@onready var map_generator: MapGenerator = $MapGenerator
-@onready var safehouse: SafehouseMarker = $Safehouse
-@onready var merchant: Merchant = $Merchant
-@onready var skill_terminal: SkillTerminal = $SkillTerminal
+@onready var map_manager: MapManager = $MapManager
+@onready var interaction_overlay: Node = $HUD/InteractionOverlay
+@onready var main_menu_ui: Control = $HUD/MainMenuUI
+var merchant: Merchant
+var skill_terminal: SkillTerminal
+var respawn_point: Node
 
 var _boss: Monster
 var _kills: int = 0
@@ -36,13 +36,12 @@ var _power_fixed: int = 0
 var _total_power_nodes: int = 3
 var _power_seen: Dictionary = {}
 var _exit_gate: ExitGate
+var _pickup_scan_accumulator: float = 0.0
+var _hud_update_accumulator: float = 0.0
 
 func _ready() -> void:
 	demon.set_target(player)
 	blood_monster.set_target(player)
-	merchant.setup(player)
-	skill_terminal.setup(player)
-	safehouse.setup(player)
 	EventBus.weapon_switched.connect(_on_weapon_switched)
 	EventBus.shot_fired.connect(_on_shot_fired)
 	EventBus.noise_emitted.connect(_on_noise_emitted)
@@ -60,48 +59,116 @@ func _ready() -> void:
 	EventBus.boss_ability_requested.connect(_on_boss_ability_requested)
 	EventBus.throwable_thrown.connect(_on_throwable_thrown)
 	EventBus.power_node_fixed.connect(_on_power_node_fixed)
-	EventBus.safehouse_discovered.connect(_on_safehouse_discovered)
 	EventBus.run_completed.connect(_on_run_completed)
 	EventBus.run_start_requested.connect(_on_run_start_requested)
 	EventBus.run_restart_requested.connect(_on_run_restart_requested)
-	map_generator.generate()
-	_build_boundary_walls()
-	_spawn_data_pickup(Vector2(330.0, 480.0), MEDKIT_DATA, 1, Color(0.85, 0.25, 0.3, 1.0))
-	_spawn_data_pickup(Vector2(760.0, 650.0), AMMO_BOX_DATA, 1, Color(0.3, 0.7, 0.9, 1.0))
-	_spawn_data_pickup(Vector2(1180.0, 330.0), MEDKIT_DATA, 1, Color(0.85, 0.25, 0.3, 1.0))
-	_spawn_data_pickup(Vector2(1080.0, 820.0), ADRENALINE_DATA, 1, Color(0.95, 0.55, 0.2, 1.0))
-	var generated_shotgun: WeaponData = WeaponGenerator.generate_random(SHOTGUN_DATA, map_generator.map_seed)
-	_spawn_weapon_pickup(Vector2(1220.0, 700.0), generated_shotgun, Color(0.78, 0.45, 0.95, 1.0))
-	_spawn_data_pickup(Vector2(500.0, 760.0), FLARE_DATA, 1, Color(1.0, 0.78, 0.28, 1.0))
-	_spawn_data_pickup(Vector2(900.0, 260.0), SMOKE_DATA, 1, Color(0.65, 0.7, 0.78, 1.0))
-	_spawn_data_pickup(Vector2(1260.0, 520.0), GRENADE_DATA, 1, Color(0.95, 0.3, 0.2, 1.0))
-	_spawn_data_pickup(Vector2(1440.0, 740.0), MINE_DATA, 1, Color(0.75, 0.25, 0.85, 1.0))
+	interaction_overlay.connect("dialogue_finished", Callable(self, "_on_dialogue_finished"))
+	map_manager.load_random_map()
+	_bind_map_facilities()
+	_bind_map_interactables()
+	demo_hud.set_map_label(map_manager.get_display_name())
+	var player_spawn: Vector2 = map_manager.get_marker_position("player_spawn")
+	if player_spawn != Vector2.ZERO:
+		player.position = player_spawn
+		if player.camera != null:
+			player.camera.reset_smoothing()
+	var enemy_spawns: Array[Vector2] = map_manager.get_marker_positions("enemy_spawn")
+	if enemy_spawns.size() > 0:
+		demon.position = enemy_spawns[0]
+	if enemy_spawns.size() > 1:
+		blood_monster.position = enemy_spawns[1]
+	_spawn_configured_pickups()
 	_spawn_power_nodes()
 	_exit_gate = ExitGate.new()
 	add_child(_exit_gate)
-	_exit_gate.position = Vector2(1500.0, 760.0)
+	var exit_position: Vector2 = map_manager.get_marker_position("exit")
+	_exit_gate.position = exit_position if exit_position != Vector2.ZERO else Vector2(1500.0, 760.0)
 	_exit_gate.setup(player)
 	_last_event = "准备行动：移动、射击或打开背包"
 	demo_hud.show_main_menu()
 
 func _process(delta: float) -> void:
 	if not _run_over:
-		_collect_nearby_pickups()
-		if Input.is_action_just_pressed("interact") and safehouse.contains_point(player.global_position):
-			player.restore_at_safehouse()
+		_pickup_scan_accumulator += delta
+		if _pickup_scan_accumulator >= 0.08:
+			_pickup_scan_accumulator = 0.0
+			_collect_nearby_pickups()
+		if Input.is_action_just_pressed("interact"):
+			_try_interact_with_map_doors()
 	elif Input.is_action_just_pressed("interact"):
 		get_tree().reload_current_scene()
-	_update_hud()
+	_hud_update_accumulator += delta
+	if _hud_update_accumulator >= 0.05:
+		_hud_update_accumulator = 0.0
+		_update_hud()
+
+func _bind_map_facilities() -> void:
+	if map_manager.active_map == null:
+		return
+	var merchants: Array[Node] = map_manager.active_map.find_children("*", "Merchant", true, false)
+	if not merchants.is_empty():
+		merchant = merchants[0] as Merchant
+		merchant.setup(player)
+	var terminals: Array[Node] = map_manager.active_map.find_children("*", "SkillTerminal", true, false)
+	if not terminals.is_empty():
+		skill_terminal = terminals[0] as SkillTerminal
+		skill_terminal.setup(player)
+	respawn_point = map_manager.active_map.get_node_or_null("Facilities/RespawnPoint")
+	if respawn_point != null:
+		respawn_point.call("setup", player)
+
+func _bind_map_interactables() -> void:
+	if map_manager.active_map == null:
+		return
+	var corpse: Node = map_manager.active_map.get_node_or_null("Facilities/Corpse")
+	if corpse != null and corpse.has_signal("interaction_requested"):
+		corpse.call("setup", player)
+		var corpse_callback: Callable = Callable(self, "_on_corpse_interact")
+		if not corpse.is_connected("interaction_requested", corpse_callback):
+			corpse.connect("interaction_requested", corpse_callback)
+	if merchant != null and merchant.has_signal("interaction_requested"):
+		var merchant_callback: Callable = Callable(self, "_on_merchant_interact")
+		if not merchant.interaction_requested.is_connected(merchant_callback):
+			merchant.interaction_requested.connect(merchant_callback)
+
+func _on_corpse_interact(corpse: Node2D) -> void:
+	if interaction_overlay == null or not is_instance_valid(interaction_overlay):
+		return
+	interaction_overlay.call(
+		"open_corpse_dialogue",
+		corpse,
+		load("res://assets/俯视角/The Female Adventurer - Free/The Female Adventurer - Free/Death/death.png"),
+		int(corpse.get("portrait_frame")),
+	)
+
+func _on_merchant_interact(target: Node2D) -> void:
+	if target is Merchant and interaction_overlay != null:
+		interaction_overlay.call("open_merchant_dialogue", target)
+
+func _on_dialogue_finished(dialogue_kind: String, target: Node) -> void:
+	if dialogue_kind == "corpse" and target != null and is_instance_valid(target):
+		player.add_access_pass("prison_pass")
+		target.call("mark_searched")
+		_last_event = "从尸体上找到通信证：部分封锁门已可通行"
+
+func _try_interact_with_map_doors() -> void:
+	if map_manager.active_map == null:
+		return
+	for node in map_manager.active_map.find_children("*", "MapDoor", true, false):
+		var door: MapDoor = node as MapDoor
+		if door == null or door.opened:
+			continue
+		var reach: float = maxf(42.0, maxf(door.size.x, door.size.y) * 0.75)
+		if door.global_position.distance_to(player.global_position) <= reach:
+			door.try_open(player)
 
 func _update_hud() -> void:
-	if player == null or status_label == null:
+	if player == null or demo_hud == null:
 		return
 	var weapon_name: String = "None"
-	var ammo_text: String = "-"
 	if not player.weapons.is_empty():
 		var weapon: WeaponData = player.weapons[player.current_weapon_index]
 		weapon_name = weapon.weapon_name
-		ammo_text = "%d/%d + %d" % [player.current_ammo, weapon.mag_size, player.get_current_reserve_ammo()]
 	var current_state: String = "Init"
 	if $Player/StateMachine.current_state != null:
 		current_state = $Player/StateMachine.current_state.name
@@ -112,27 +179,8 @@ func _update_hud() -> void:
 		boss_text = "%.0f/%.0f" % [_boss.current_health, _boss.data.max_health]
 		boss_health = _boss.current_health
 		boss_max_health = _boss.data.max_health
-	status_label.text = "PRISON ROGUELITE DEMO\n\nHP: %.0f/%.0f   Heal: %d\nWeapon: %s   Ammo: %s\nState: %s\nNoise: %.0f + %.0f\nKills: %d   Boss: %s\n\nWASD move | Shift dash\nLMB fire / throw charge | R reload | RMB aim/parry\nQ heal | F consumable | E resupply in safehouse" % [
-		player.current_health,
-		player.max_health,
-		player.medkits,
-		weapon_name,
-		ammo_text,
-		current_state,
-		_temporary_noise,
-		_residual_noise,
-		_kills,
-		boss_text,
-	]
 	var armor_current: int = player.armor.durability if player.armor != null else 0
 	var armor_maximum: int = player.armor.max_durability if player.armor != null else 0
-	var throwable_summary: String = "F%d S%d G%d M%d" % [
-		int(player.throwable_counts.get("flare", 0)),
-		int(player.throwable_counts.get("smoke", 0)),
-		int(player.throwable_counts.get("grenade", 0)),
-		int(player.throwable_counts.get("mine", 0)),
-	]
-	event_label.text = _last_event
 	demo_hud.set_data(
 		player.current_health,
 		player.max_health,
@@ -153,7 +201,7 @@ func _update_hud() -> void:
 		_total_power_nodes,
 		armor_current,
 		armor_maximum,
-		throwable_summary,
+		"",
 		player.get_quick_slot_counts(),
 		player.selected_active_slot,
 		MetaProgression.coins,
@@ -179,44 +227,37 @@ func _on_shot_fired(weapon_data: WeaponData, position: Vector2, direction: Vecto
 	for pellet_index in pellet_count:
 		var spread_angle: float = 0.0
 		if pellet_count > 1:
-			spread_angle = deg_to_rad(randf_range(-weapon_data.spread, weapon_data.spread))
+			var spread_multiplier: float = weapon_data.aim_spread_multiplier if player.is_aiming else 1.0
+			var effective_spread: float = weapon_data.spread * spread_multiplier
+			spread_angle = deg_to_rad(randf_range(-effective_spread, effective_spread))
 		var projectile: Projectile = Projectile.new()
 		add_child(projectile)
 		var shot_damage: float = DamageSystem.calculate_weapon_damage(weapon_data, 0.0, player.is_aiming)
 		projectile.setup(position, direction.rotated(spread_angle), weapon_data.projectile_speed, shot_damage, player, weapon_data.effects, weapon_data.range)
 	var shot_noise: int = 0 if weapon_data.effects.has(GameEnums.BuffType.SILENCED) else weapon_data.noise
 	EventBus.noise_emitted.emit(shot_noise, position, player)
-	_last_event = "开火：%s（%d 发）" % [weapon_data.weapon_name, pellet_count]
 
 func _on_throwable_thrown(throwable_type: int, position: Vector2, direction: Vector2, source: Node2D, charge_ratio: float) -> void:
 	var throwable: Throwable = Throwable.new()
 	add_child(throwable)
 	throwable.setup(throwable_type, position, source, direction, charge_ratio)
-	_last_event = "已投掷物品：%d" % throwable_type
+	_last_event = "投掷物已释放"
 
 func _spawn_power_nodes() -> void:
-	var positions: Array[Vector2] = [
-		Vector2(620.0, 170.0),
-		Vector2(1040.0, 760.0),
-		Vector2(1320.0, 360.0),
-	]
+	for existing in get_tree().get_nodes_in_group("power_nodes"):
+		if existing != null and is_instance_valid(existing):
+			existing.queue_free()
+	_power_seen.clear()
+	_power_fixed = 0
+	var positions: Array[Vector2] = map_manager.get_marker_positions("power")
+	if positions.size() < _total_power_nodes:
+		positions = [Vector2(620.0, 170.0), Vector2(1040.0, 760.0), Vector2(1320.0, 360.0)]
+	_total_power_nodes = positions.size()
 	for index in positions.size():
 		var node: PowerNode = PowerNode.new()
 		add_child(node)
 		node.position = positions[index]
 		node.setup(index, player)
-
-func _build_boundary_walls() -> void:
-	var boundary_rects: Array[Rect2] = [
-		Rect2(-40.0, -40.0, 1760.0, 36.0),
-		Rect2(-40.0, 1080.0, 1760.0, 36.0),
-		Rect2(-40.0, -40.0, 36.0, 1156.0),
-		Rect2(1680.0, -40.0, 36.0, 1156.0),
-	]
-	for index in boundary_rects.size():
-		var wall: Wall = Wall.new()
-		add_child(wall)
-		wall.setup(boundary_rects[index], index + 1)
 
 func _on_power_node_fixed(node: Node2D, _fixed_count: int, _total_count: int) -> void:
 	if node == null or not is_instance_valid(node):
@@ -226,19 +267,22 @@ func _on_power_node_fixed(node: Node2D, _fixed_count: int, _total_count: int) ->
 	_power_seen[node.get_instance_id()] = true
 	_power_fixed += 1
 	var power_node: PowerNode = node as PowerNode
-	if power_node != null:
-		map_generator.set_power_node_fixed(power_node.node_index)
+	if power_node != null and map_manager.active_map != null:
+		map_manager.active_map.set_meta("power_fixed_%d" % power_node.node_index, true)
 	EventBus.noise_emitted.emit(95, node.global_position, player)
 	_last_event = "电源 %d / %d 已修复，噪声正在扩散" % [_power_fixed, _total_power_nodes]
 	if _power_fixed >= _total_power_nodes:
 		_last_event = "全部电力已恢复，守卫者已经苏醒"
+		_unlock_map_doors()
 		EventBus.boss_spawn_requested.emit()
 		if _boss_defeated and _exit_gate != null:
 			_exit_gate.set_available(true)
 
-func _on_safehouse_discovered(house_id: int) -> void:
-	map_generator.set_safehouse_discovered(safehouse.global_position)
-	_last_event = "安全屋 %d 已发现，可在此补给整备" % house_id
+func _unlock_map_doors() -> void:
+	for node in get_tree().get_nodes_in_group("map_doors"):
+		var door: MapDoor = node as MapDoor
+		if door != null:
+			door.unlock_from_power()
 
 func _on_run_completed(_escaped: bool, _reported_kills: int, _reported_coins: int) -> void:
 	if _run_over:
@@ -280,7 +324,9 @@ func _on_boss_spawn_requested() -> void:
 		return
 	boss.name = "WardenBoss"
 	boss.data = BOSS_DATA
-	boss.position = Vector2(1400.0, 760.0)
+	boss.position = map_manager.get_marker_position("boss_spawn")
+	if boss.position == Vector2.ZERO:
+		boss.position = Vector2(1400.0, 760.0)
 	add_child(boss)
 	boss.set_target(player)
 	_boss = boss
@@ -331,21 +377,46 @@ func _spawn_weapon_pickup(position: Vector2, data: WeaponData, tint: Color) -> v
 	pickup.position = position
 	pickup.setup_weapon(data, tint, player)
 
+func _spawn_configured_pickups() -> void:
+	var markers: Array[MapMarker] = map_manager.get_markers("pickup")
+	if markers.is_empty():
+		_spawn_data_pickup(Vector2(330.0, 480.0), MEDKIT_DATA, 1, Color(0.85, 0.25, 0.3, 1.0))
+		return
+	for marker in markers:
+		match marker.payload:
+			"medkit":
+				_spawn_data_pickup(marker.global_position, MEDKIT_DATA, 1, Color(0.85, 0.25, 0.3, 1.0))
+			"ammo_box":
+				_spawn_data_pickup(marker.global_position, AMMO_BOX_DATA, 1, Color(0.3, 0.7, 0.9, 1.0))
+			"adrenaline":
+				_spawn_data_pickup(marker.global_position, ADRENALINE_DATA, 1, Color(0.95, 0.55, 0.2, 1.0))
+			"shotgun":
+				var generated_shotgun: WeaponData = WeaponGenerator.generate_random(SHOTGUN_DATA, map_manager.map_seed)
+				_spawn_weapon_pickup(marker.global_position, generated_shotgun, Color(0.78, 0.45, 0.95, 1.0))
+			"flare":
+				_spawn_data_pickup(marker.global_position, FLARE_DATA, 1, Color(1.0, 0.78, 0.28, 1.0))
+			"smoke":
+				_spawn_data_pickup(marker.global_position, SMOKE_DATA, 1, Color(0.65, 0.7, 0.78, 1.0))
+			"grenade":
+				_spawn_data_pickup(marker.global_position, GRENADE_DATA, 1, Color(0.95, 0.3, 0.2, 1.0))
+			"mine":
+				_spawn_data_pickup(marker.global_position, MINE_DATA, 1, Color(0.75, 0.25, 0.85, 1.0))
+
 func _collect_nearby_pickups() -> void:
 	for node in get_tree().get_nodes_in_group("pickups"):
 		var pickup: Pickup = node as Pickup
 		if pickup != null and pickup.global_position.distance_to(player.global_position) <= 30.0:
 			pickup.collect(player)
 
-func _on_weapon_switched(slot_index: int, weapon_data: WeaponData) -> void:
-	_last_event = "切换武器 %d：%s" % [slot_index + 1, weapon_data.weapon_name]
+func _on_weapon_switched(slot_index: int, _weapon_data: WeaponData) -> void:
+	_last_event = "已切换武器 %d" % (slot_index + 1)
 
-func _on_dash_started(_position: Vector2, direction: Vector2) -> void:
-	_last_event = "冲刺 %s" % direction.round()
+func _on_dash_started(_position: Vector2, _direction: Vector2) -> void:
+	_last_event = "冲刺"
 
 func _on_state_changed(_previous_state: String, next_state: String) -> void:
-	if next_state != "Parry":
-		_last_event = "状态：" + next_state
+	if next_state == "Parry":
+		_last_event = "格挡窗口"
 
 func _on_monster_alerted(monster: Node2D, _source: Vector2) -> void:
 	_last_event = "%s 听到了噪声" % monster.name
@@ -363,16 +434,25 @@ func _on_monster_killed(monster: Node2D) -> void:
 		_last_event = "%s 已被击败" % monster.name
 
 func _on_player_died() -> void:
+	if player.respawn_at_checkpoint():
+		_run_over = false
+		_last_event = "已在复活点重生"
+		demo_hud.show_run()
+		return
 	_run_over = true
 	_last_event = "任务失败，本局携带物资已丢失"
 	demo_hud.show_death()
 
 func _on_run_start_requested() -> void:
 	_run_over = false
+	if main_menu_ui != null:
+		main_menu_ui.visible = false
 	demo_hud.show_run()
 	_last_event = "任务开始：修复电力并抵达撤离点"
 
 func _on_run_restart_requested() -> void:
+	if main_menu_ui != null:
+		main_menu_ui.visible = false
 	get_tree().paused = false
 	get_tree().reload_current_scene()
 
