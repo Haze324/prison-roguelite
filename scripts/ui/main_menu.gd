@@ -15,6 +15,19 @@ const BACKGROUND_PATH: String = "res://assets/generated/ui/main_menu_background_
 const TITLE_FONT_PATH: String = "res://assets/fonts/prison_title_agency_b.ttf"
 const TERMINAL_FONT_PATH: String = "res://assets/fonts/prison_terminal_mono.ttf"
 
+@export_group("主菜单文案")
+@export var title_text: String = "PRISON"
+@export var subtitle_text: String = "SILENT ESCAPE"
+@export var plaque_text: String = "ACCESS TERMINAL"
+@export var primary_button_text: String = "▶   START RUN"
+@export var settings_button_text: String = "SETTINGS"
+@export var quit_button_text: String = "QUIT"
+
+@export_group("主菜单版式")
+@export var title_font_size: int = 100
+@export var title_rotation_degrees: float = -0.8
+@export var console_rotation_degrees: float = -3.0
+
 var _background: TextureRect
 var _ambient: MainMenuAmbient
 var _modal_shade: ColorRect
@@ -95,11 +108,12 @@ func _build_components() -> void:
 
 	var facility: Label = _label("FACILITY CONTROL  /  NIGHT SHIFT", 11, TEAL, _terminal_font)
 	facility.name = "FacilityLabel"
+	facility.visible = false
 	add_child(facility)
 
-	var title: Label = _label("PRISON", 100, INK, _title_font)
+	var title: Label = _label(title_text, title_font_size, INK, _title_font)
 	title.name = "Title"
-	title.rotation_degrees = -0.8
+	title.rotation_degrees = title_rotation_degrees
 	title.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.95))
 	title.add_theme_constant_override("shadow_offset_x", 3)
 	title.add_theme_constant_override("shadow_offset_y", 3)
@@ -112,7 +126,7 @@ func _build_components() -> void:
 	title.material = title_material
 	add_child(title)
 
-	var subtitle: Label = _label("SILENT ESCAPE", 16, TEAL, _terminal_font)
+	var subtitle: Label = _label(subtitle_text, 16, TEAL, _terminal_font)
 	subtitle.name = "Subtitle"
 	subtitle.rotation_degrees = -0.8
 	subtitle.add_theme_constant_override("outline_size", 2)
@@ -121,6 +135,7 @@ func _build_components() -> void:
 
 	var descriptor: Label = _label("SOLO EXTRACTION  /  LOW-LIGHT FACILITY", 12, MUTED, _terminal_font)
 	descriptor.name = "Descriptor"
+	descriptor.visible = false
 	add_child(descriptor)
 
 	var action_panel: Panel = Panel.new()
@@ -129,40 +144,44 @@ func _build_components() -> void:
 	action_panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(action_panel)
 
-	var terminal_label: Label = _label("ACCESS TERMINAL  /  STANDBY", 11, MUTED, _terminal_font)
+	var terminal_label: Label = _label(plaque_text + "  /  STANDBY", 11, MUTED, _terminal_font)
 	terminal_label.name = "TerminalLabel"
 	terminal_label.position = Vector2(22.0, 10.0)
 	terminal_label.size = Vector2(300.0, 20.0)
 	action_panel.add_child(terminal_label)
 
-	_start_button = _make_button("▶   START RUN", TEAL, true)
+	_start_button = _make_button(primary_button_text, TEAL, true)
 	_start_button.name = "StartButton"
 	_start_button.pressed.connect(_on_start_pressed)
 	action_panel.add_child(_start_button)
 
-	_settings_button = _make_button("SETTINGS", AMBER, false)
+	_settings_button = _make_button(settings_button_text, AMBER, false)
 	_settings_button.name = "SettingsButton"
 	_settings_button.pressed.connect(_on_settings_pressed)
 	action_panel.add_child(_settings_button)
 
-	_quit_button = _make_button("QUIT", MUTED, false)
+	_quit_button = _make_button(quit_button_text, MUTED, false)
 	_quit_button.name = "QuitButton"
 	_quit_button.pressed.connect(_on_quit_pressed)
 	action_panel.add_child(_quit_button)
 
 	_warning_label = _label("ALARM SYSTEM  /  MONITORING", 11, RED, _terminal_font)
 	_warning_label.name = "WarningStatus"
+	_warning_label.visible = false
 	add_child(_warning_label)
 	_power_label = _label("POWER CORE  /  STABLE", 11, TEAL, _terminal_font)
 	_power_label.name = "PowerStatus"
+	_power_label.visible = false
 	add_child(_power_label)
 
 	var hint: Label = _label("ENTER / CONFIRM   ↑↓ / SELECT   ESC / RETURN", 10, MUTED, _terminal_font)
 	hint.name = "InputHint"
+	hint.visible = false
 	add_child(hint)
 
 	var version: Label = _label("SURVIVOR PROTOCOL  /  DEMO", 10, Color(MUTED, 0.76), _terminal_font)
 	version.name = "VersionLabel"
+	version.visible = false
 	version.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(version)
 
@@ -244,7 +263,7 @@ func _layout_components() -> void:
 	action_panel.position = Vector2(left, action_y)
 	action_panel.size = Vector2(action_width, 194.0)
 	action_panel.pivot_offset = action_panel.size * 0.5
-	action_panel.rotation_degrees = -3.0
+	action_panel.rotation_degrees = console_rotation_degrees
 	_start_button.position = Vector2(22.0, 34.0)
 	_start_button.size = Vector2(action_width - 44.0, 62.0)
 	_settings_button.position = Vector2(22.0, 112.0)
