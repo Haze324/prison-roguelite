@@ -12,6 +12,8 @@ const TEAL: Color = Color("61D2BF")
 const AMBER: Color = Color("D2A24D")
 const RED: Color = Color("B84D45")
 const BACKGROUND_PATH: String = "res://assets/generated/ui/main_menu_background_clean_v1.png"
+const TITLE_FONT_PATH: String = "res://assets/fonts/prison_title_agency_b.ttf"
+const TERMINAL_FONT_PATH: String = "res://assets/fonts/prison_terminal_mono.ttf"
 
 var _background: TextureRect
 var _ambient: MainMenuAmbient
@@ -30,11 +32,15 @@ var _layout_size: Vector2 = Vector2.ZERO
 var _time: float = 0.0
 var _last_focus: Control
 var _button_base_positions: Dictionary = {}
+var _title_font: Font
+var _terminal_font: Font
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	_title_font = load(TITLE_FONT_PATH) as Font
+	_terminal_font = load(TERMINAL_FONT_PATH) as Font
 	_build_components()
 	_layout_components()
 	call_deferred("_layout_components")
@@ -87,68 +93,75 @@ func _build_components() -> void:
 	_transition_cover.z_index = 30
 	add_child(_transition_cover)
 
-	var facility: Label = _label("FACILITY CONTROL  /  NIGHT SHIFT", 11, TEAL)
+	var facility: Label = _label("FACILITY CONTROL  /  NIGHT SHIFT", 11, TEAL, _terminal_font)
 	facility.name = "FacilityLabel"
 	add_child(facility)
 
-	var title: Label = _label("PRISON", 68, INK)
+	var title: Label = _label("PRISON", 100, INK, _title_font)
 	title.name = "Title"
+	title.rotation_degrees = -0.8
 	title.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.95))
 	title.add_theme_constant_override("shadow_offset_x", 3)
 	title.add_theme_constant_override("shadow_offset_y", 3)
 	title.add_theme_constant_override("outline_size", 1)
 	title.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.78))
+	var title_shader: Shader = Shader.new()
+	title_shader.code = "shader_type canvas_item;\nvoid fragment() {\n    vec4 base = texture(TEXTURE, UV);\n    float grain = fract(sin(dot(UV * vec2(360.0, 260.0), vec2(12.9898, 78.233))) * 43758.5453);\n    if (grain > 0.94) { base.rgb *= 0.58; }\n    COLOR = base;\n}"
+	var title_material: ShaderMaterial = ShaderMaterial.new()
+	title_material.shader = title_shader
+	title.material = title_material
 	add_child(title)
 
-	var subtitle: Label = _label("SILENT ESCAPE", 16, TEAL)
+	var subtitle: Label = _label("SILENT ESCAPE", 16, TEAL, _terminal_font)
 	subtitle.name = "Subtitle"
+	subtitle.rotation_degrees = -0.8
 	subtitle.add_theme_constant_override("outline_size", 2)
 	subtitle.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.9))
 	add_child(subtitle)
 
-	var descriptor: Label = _label("一场低照度设施内的单人撤离行动", 13, MUTED)
+	var descriptor: Label = _label("SOLO EXTRACTION  /  LOW-LIGHT FACILITY", 12, MUTED, _terminal_font)
 	descriptor.name = "Descriptor"
 	add_child(descriptor)
 
 	var action_panel: Panel = Panel.new()
 	action_panel.name = "ActionPanel"
-	action_panel.add_theme_stylebox_override("panel", _panel_style(Color(STEEL, 0.72), 0.18, 1))
+	action_panel.add_theme_stylebox_override("panel", _panel_style(Color(STEEL, 0.42), 0.05, 0))
 	action_panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(action_panel)
 
-	var terminal_label: Label = _label("门禁控制台  /  等待授权", 11, MUTED)
+	var terminal_label: Label = _label("ACCESS TERMINAL  /  STANDBY", 11, MUTED, _terminal_font)
 	terminal_label.name = "TerminalLabel"
 	terminal_label.position = Vector2(22.0, 10.0)
 	terminal_label.size = Vector2(300.0, 20.0)
 	action_panel.add_child(terminal_label)
 
-	_start_button = _make_button("▶   开始任务", TEAL, true)
+	_start_button = _make_button("▶   START RUN", TEAL, true)
 	_start_button.name = "StartButton"
 	_start_button.pressed.connect(_on_start_pressed)
 	action_panel.add_child(_start_button)
 
-	_settings_button = _make_button("设置", AMBER, false)
+	_settings_button = _make_button("SETTINGS", AMBER, false)
 	_settings_button.name = "SettingsButton"
 	_settings_button.pressed.connect(_on_settings_pressed)
 	action_panel.add_child(_settings_button)
 
-	_quit_button = _make_button("退出", MUTED, false)
+	_quit_button = _make_button("QUIT", MUTED, false)
 	_quit_button.name = "QuitButton"
 	_quit_button.pressed.connect(_on_quit_pressed)
 	action_panel.add_child(_quit_button)
 
-	_warning_label = _label("警报系统  /  监听中", 11, RED)
+	_warning_label = _label("ALARM SYSTEM  /  MONITORING", 11, RED, _terminal_font)
 	_warning_label.name = "WarningStatus"
 	add_child(_warning_label)
-	_power_label = _label("电源核心  /  稳定", 11, TEAL)
+	_power_label = _label("POWER CORE  /  STABLE", 11, TEAL, _terminal_font)
 	_power_label.name = "PowerStatus"
 	add_child(_power_label)
 
-	var hint: Label = _label("Enter 确认   ↑↓ 选择   Esc 返回", 11, MUTED)
+	var hint: Label = _label("ENTER / CONFIRM   ↑↓ / SELECT   ESC / RETURN", 10, MUTED, _terminal_font)
 	hint.name = "InputHint"
 	add_child(hint)
 
-	var version: Label = _label("SURVIVOR PROTOCOL  /  DEMO", 10, Color(MUTED, 0.76))
+	var version: Label = _label("SURVIVOR PROTOCOL  /  DEMO", 10, Color(MUTED, 0.76), _terminal_font)
 	version.name = "VersionLabel"
 	version.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(version)
@@ -165,36 +178,36 @@ func _build_settings_panel() -> Panel:
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.add_theme_stylebox_override("panel", _panel_style(AMBER, 0.96, 2))
 
-	var title: Label = _label("终端设置", 22, INK)
+	var title: Label = _label("TERMINAL SETTINGS", 20, INK, _terminal_font)
 	title.position = Vector2(24.0, 22.0)
 	title.size = Vector2(270.0, 30.0)
 	panel.add_child(title)
-	var caption: Label = _label("本次演示的运行配置", 11, MUTED)
+	var caption: Label = _label("CURRENT RUN CONFIGURATION", 10, MUTED, _terminal_font)
 	caption.position = Vector2(24.0, 56.0)
 	caption.size = Vector2(270.0, 20.0)
 	panel.add_child(caption)
 
-	var resolution: Label = _label("画面\n1280 × 720", 13, INK)
+	var resolution: Label = _label("DISPLAY\n1280 x 720", 12, INK, _terminal_font)
 	resolution.position = Vector2(24.0, 96.0)
 	resolution.size = Vector2(160.0, 48.0)
 	panel.add_child(resolution)
-	var resolution_state: Label = _label("已锁定", 11, TEAL)
+	var resolution_state: Label = _label("LOCKED", 10, TEAL, _terminal_font)
 	resolution_state.position = Vector2(200.0, 104.0)
 	resolution_state.size = Vector2(72.0, 24.0)
 	resolution_state.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	panel.add_child(resolution_state)
 
-	var audio: Label = _label("声音\n默认混音", 13, INK)
+	var audio: Label = _label("AUDIO\nDEFAULT MIX", 12, INK, _terminal_font)
 	audio.position = Vector2(24.0, 158.0)
 	audio.size = Vector2(160.0, 48.0)
 	panel.add_child(audio)
-	var audio_state: Label = _label("开启", 11, TEAL)
+	var audio_state: Label = _label("ON", 10, TEAL, _terminal_font)
 	audio_state.position = Vector2(200.0, 166.0)
 	audio_state.size = Vector2(72.0, 24.0)
 	audio_state.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	panel.add_child(audio_state)
 
-	_settings_close_button = _make_button("返回终端", AMBER, false)
+	_settings_close_button = _make_button("RETURN TO TERMINAL", AMBER, false)
 	_settings_close_button.position = Vector2(24.0, 228.0)
 	_settings_close_button.size = Vector2(252.0, 42.0)
 	_settings_close_button.pressed.connect(_on_settings_pressed)
@@ -223,13 +236,15 @@ func _layout_components() -> void:
 	_transition_cover.size = size
 
 	_set_rect("FacilityLabel", Vector2(left + 8.0, size.y * 0.055), Vector2(440.0, 20.0))
-	_set_rect("Title", Vector2(left, size.y * 0.085), Vector2(520.0, 84.0))
+	_set_rect("Title", Vector2(left, size.y * 0.055), Vector2(560.0, 120.0))
 	_set_rect("Subtitle", Vector2(left + 4.0, size.y * 0.205), Vector2(360.0, 26.0))
 	_set_rect("Descriptor", Vector2(left + 4.0, size.y * 0.25), Vector2(360.0, 22.0))
 
 	var action_panel: Panel = get_node("ActionPanel") as Panel
 	action_panel.position = Vector2(left, action_y)
 	action_panel.size = Vector2(action_width, 194.0)
+	action_panel.pivot_offset = action_panel.size * 0.5
+	action_panel.rotation_degrees = -3.0
 	_start_button.position = Vector2(22.0, 34.0)
 	_start_button.size = Vector2(action_width - 44.0, 62.0)
 	_settings_button.position = Vector2(22.0, 112.0)
@@ -242,6 +257,8 @@ func _layout_components() -> void:
 
 	_set_rect("WarningStatus", Vector2(left + action_width + 34.0, action_y + 102.0), Vector2(210.0, 20.0))
 	_set_rect("PowerStatus", Vector2(left + action_width + 34.0, action_y + 126.0), Vector2(210.0, 20.0))
+	_warning_label.rotation_degrees = -3.0
+	_power_label.rotation_degrees = -3.0
 	var footer_y: float = minf(size.y - 54.0, 486.0)
 	_set_rect("InputHint", Vector2(left, footer_y), Vector2(330.0, 20.0))
 	_set_rect("VersionLabel", Vector2(size.x - left - 300.0, footer_y), Vector2(300.0, 20.0))
@@ -257,11 +274,13 @@ func _set_rect(node_name: String, position: Vector2, node_size: Vector2) -> void
 	node.position = position
 	node.size = node_size
 
-func _label(text_value: String, font_size: int, color: Color) -> Label:
+func _label(text_value: String, font_size: int, color: Color, font: Font = null) -> Label:
 	var label: Label = Label.new()
 	label.text = text_value
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
+	if font != null:
+		label.add_theme_font_override("font", font)
 	label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.88))
 	label.add_theme_constant_override("shadow_offset_x", 1)
 	label.add_theme_constant_override("shadow_offset_y", 1)
@@ -271,6 +290,8 @@ func _label(text_value: String, font_size: int, color: Color) -> Label:
 func _make_button(text_value: String, accent: Color, primary: bool) -> Button:
 	var button: Button = Button.new()
 	button.text = text_value
+	if _terminal_font != null:
+		button.add_theme_font_override("font", _terminal_font)
 	button.add_theme_font_size_override("font_size", 18 if primary else 14)
 	button.add_theme_color_override("font_color", INK)
 	button.add_theme_color_override("font_hover_color", Color.WHITE)
